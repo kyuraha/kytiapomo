@@ -724,9 +724,9 @@
         z-index: 100;
         height: var(--music-bar-height);
         display: grid;
-        grid-template-columns: auto auto auto 1fr auto auto;
+        grid-template-columns: 1fr auto 1fr;
         align-items: center;
-        gap: 14px;
+        gap: 0;
         padding: 0 var(--space-md);
         background: rgba(13, 13, 13, 0.95);
         border-top: 1px solid rgba(0, 180, 216, 0.15);
@@ -735,6 +735,24 @@
         right: 0;
         bottom: 0;
         width: 100vw;
+      }
+      .musicbar-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        justify-content: flex-start;
+      }
+      .musicbar-center {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        justify-content: center;
+      }
+      .musicbar-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        justify-content: flex-end;
       }
       .iconbar-btn {
         border: 0;
@@ -962,25 +980,26 @@
 
         <!-- Music bar (fixed at bottom of left panel) -->
         <div class="musicbar" aria-label="Music player bar">
-          <button class="iconbar-btn" id="musicMenuBtn" type="button" aria-label="Open playlist (placeholder)" title="Playlist">
-            ≡
-          </button>
-          <button class="iconbar-btn" id="musicPrevBtn" type="button" aria-label="Previous track (placeholder)" title="Previous">
-            ⏮
-          </button>
-          <button class="iconbar-btn" id="musicToggleBtn" type="button" aria-pressed="false" aria-label="Play music" title="Play/Pause"></button>
-          <button class="iconbar-btn" id="musicNextBtn" type="button" aria-label="Next track (placeholder)" title="Next">
-            ⏭
-          </button>
-          <div class="volume" aria-label="Volume control">
-            <span aria-hidden="true" style="color: var(--color-text-secondary)">🔊</span>
-            <input id="volumeRange" type="range" min="0" max="1" step="0.01" />
-            <span id="volumeValue" class="subtle" style="min-width: 44px; text-align: right">50%</span>
+          <!-- Left: playlist + track label -->
+          <div class="musicbar-left">
+            <button class="iconbar-btn" id="musicMenuBtn" type="button" aria-label="Open playlist (placeholder)" title="Playlist">≡</button>
+            <div class="track" id="trackLabel">Background music - Lofi</div>
           </div>
-          <div class="track" id="trackLabel">Background music - Lofi</div>
-          <button class="iconbar-btn" id="musicExpandBtn" type="button" aria-label="Expand player (placeholder)" title="Expand">
-            ⛶
-          </button>
+          <!-- Center: prev / play / next -->
+          <div class="musicbar-center">
+            <button class="iconbar-btn" id="musicPrevBtn" type="button" aria-label="Previous track" title="Previous">⏮</button>
+            <button class="iconbar-btn" id="musicToggleBtn" type="button" aria-pressed="false" aria-label="Play music" title="Play/Pause"></button>
+            <button class="iconbar-btn" id="musicNextBtn" type="button" aria-label="Next track" title="Next">⏭</button>
+          </div>
+          <!-- Right: volume + expand -->
+          <div class="musicbar-right">
+            <div class="volume" aria-label="Volume control">
+              <span aria-hidden="true" style="color: var(--color-text-secondary)">🔊</span>
+              <input id="volumeRange" type="range" min="0" max="1" step="0.01" />
+              <span id="volumeValue" class="subtle" style="min-width: 44px; text-align: right">50%</span>
+            </div>
+            <button class="iconbar-btn" id="musicExpandBtn" type="button" aria-label="Expand player (placeholder)" title="Expand">⛶</button>
+          </div>
         </div>
 
         <!-- You can replace the src below with any personal audio file. -->
@@ -1904,6 +1923,10 @@
         moveUnderlineToSelected();
       }
 
+            async function ensureMusicPlayingIfNeeded() {
+        if (el.bgAudio.paused) await setMusicPlaying(true);
+      }
+
       el.startPauseBtn.addEventListener("click", async () => {
         ensureAudioContext();
         if (audioCtx && audioCtx.state === "suspended") {
@@ -1920,8 +1943,8 @@
           }
           timerState = "running";
           setButtonUi();
-          await ensureMusicPlayingIfNeeded();
-          startTimer();
+          startTimer(); // jalankan timer langsung, jangan tunggu musik
+          ensureMusicPlayingIfNeeded().catch(() => {}); // musik jalan di background
         } else {
           // STOP: reset ke full duration untuk tab ini
           stopTimer();
@@ -2144,4 +2167,3 @@
     </script>
   </body>
 </html>
-
