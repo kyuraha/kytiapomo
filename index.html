@@ -1,0 +1,1859 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pomodoro Timer</title>
+    <!-- Fonts (UI/Display) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@400;600;700&family=DM+Sans:opsz,wght@9..40,400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* =========================================================
+        Pomodoro single-file app
+        - Neutral placeholder styling (no specific brand colors/fonts)
+        - Background particles in the furthest layer
+        - Responsive: tasks panel moves below on small screens
+      ========================================================= */
+
+      :root {
+        --bg: #0f1115;
+        --panel: rgba(255, 255, 255, 0.06);
+        --panel-2: rgba(255, 255, 255, 0.08);
+        --text: rgba(255, 255, 255, 0.9);
+        --muted: rgba(255, 255, 255, 0.65);
+        --border: rgba(255, 255, 255, 0.14);
+        --shadow: rgba(0, 0, 0, 0.35);
+        --ring-track: rgba(255, 255, 255, 0.12);
+        --ring-fill: rgba(255, 255, 255, 0.75);
+        --focus: rgba(255, 255, 255, 0.25);
+        --danger: rgba(255, 255, 255, 0.85);
+        --radius: 14px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+      }
+
+      body {
+        margin: 0;
+        background: radial-gradient(1200px 600px at 50% 35%, rgba(255, 255, 255, 0.06), transparent 55%),
+          var(--bg);
+        color: var(--text);
+        font: 14px/1.35 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        overflow-x: hidden;
+      }
+
+      /* Background particles handled by canvas (see overrides) */
+
+      /* App layout */
+      .app {
+        position: relative;
+        z-index: 1;
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: 1fr 360px;
+        gap: 18px;
+        padding: 18px;
+      }
+
+      header {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .brand {
+        font-weight: 600;
+        letter-spacing: 0.2px;
+        color: var(--muted);
+        text-transform: lowercase;
+      }
+
+      .top-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .ghost-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .ghost-link:focus-visible {
+        outline: 2px solid var(--focus);
+        outline-offset: 2px;
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: 0 14px 40px var(--shadow);
+        backdrop-filter: blur(8px);
+      }
+
+      /* Main timer panel */
+      .timer-panel {
+        display: grid;
+        grid-template-rows: auto auto 1fr auto auto;
+        padding: 18px;
+        min-height: 640px;
+        overflow: hidden;
+      }
+
+      .headline {
+        text-align: center;
+        color: var(--muted);
+        padding: 12px 10px 6px;
+        border-radius: 12px;
+        background: linear-gradient(to bottom, rgba(255, 255, 255, 0.06), transparent);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .mode-tabs {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        padding: 10px 10px 14px;
+      }
+
+      .pill {
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        color: var(--muted);
+        background: rgba(0, 0, 0, 0.12);
+        user-select: none;
+        white-space: nowrap;
+        font-size: 12px;
+      }
+
+      .pill strong {
+        color: var(--text);
+        font-weight: 650;
+      }
+
+      .center {
+        display: grid;
+        place-items: center;
+        padding: 16px 10px;
+      }
+
+      /* Timer ring */
+      .ring-wrap {
+        width: min(420px, 72vw);
+        aspect-ratio: 1 / 1;
+        position: relative;
+        display: grid;
+        place-items: center;
+      }
+
+      .ring-svg {
+        width: 100%;
+        height: 100%;
+        filter: drop-shadow(0 18px 28px rgba(0, 0, 0, 0.5));
+      }
+
+      .time-stack {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        width: 100%;
+        gap: 8px;
+        padding: 24px;
+      }
+
+      .status-label {
+        font-size: 13px;
+        letter-spacing: 0.35px;
+        color: var(--muted);
+        text-transform: uppercase;
+      }
+
+      .time {
+        font-size: clamp(56px, 8vw, 92px);
+        font-weight: 750;
+        letter-spacing: 1px;
+      }
+
+      .subtle {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      /* Buttons */
+      .controls {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        padding: 10px 10px 14px;
+      }
+
+      .btn {
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text);
+        border-radius: 12px;
+        padding: 12px 16px;
+        min-width: 140px;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .btn:hover {
+        background: rgba(255, 255, 255, 0.11);
+      }
+
+      .btn:active {
+        transform: translateY(1px);
+      }
+
+      .btn:focus-visible {
+        outline: 2px solid var(--focus);
+        outline-offset: 2px;
+      }
+
+      .btn.primary {
+        background: rgba(255, 255, 255, 0.16);
+      }
+
+      /* Music player */
+      .music {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(0, 0, 0, 0.15);
+        border-radius: 12px;
+      }
+
+      .music .btn {
+        min-width: unset;
+        padding: 10px 12px;
+        border-radius: 10px;
+      }
+
+      .music label {
+        color: var(--muted);
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        accent-color: rgba(255, 255, 255, 0.8);
+      }
+
+      /* Tasks panel */
+      .tasks-panel {
+        padding: 14px;
+        display: grid;
+        grid-template-rows: auto auto 1fr;
+        min-height: 640px;
+      }
+
+      .tasks-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 8px 8px 10px;
+      }
+
+      .tasks-header h2 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: 0.2px;
+      }
+
+      .tasks-header .count {
+        color: var(--muted);
+        font-weight: 650;
+      }
+
+      .task-input {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        padding: 8px;
+      }
+
+      .task-input input {
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text);
+        padding: 12px 12px;
+        outline: none;
+      }
+
+      .task-input input:focus {
+        border-color: rgba(255, 255, 255, 0.24);
+      }
+
+      .task-input button {
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.10);
+        color: var(--text);
+        padding: 12px 14px;
+        cursor: pointer;
+      }
+
+      .task-input button:hover {
+        background: rgba(255, 255, 255, 0.13);
+      }
+
+      .task-list {
+        margin: 8px;
+        padding: 8px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(0, 0, 0, 0.16);
+        overflow: auto;
+      }
+
+      .task-item {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 10px;
+        border-radius: 10px;
+        border: 1px solid transparent;
+      }
+
+      .task-item:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.06);
+      }
+
+      .task-item input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+      }
+
+      .task-text {
+        color: var(--text);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .task-text.done {
+        color: rgba(255, 255, 255, 0.55);
+        text-decoration: line-through;
+      }
+
+      .icon-btn {
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.07);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 8px 10px;
+        cursor: pointer;
+      }
+
+      .icon-btn:hover {
+        background: rgba(255, 255, 255, 0.10);
+      }
+
+      /* Footer hint */
+      .hint {
+        padding: 8px 8px 0;
+        color: rgba(255, 255, 255, 0.55);
+        font-size: 12px;
+      }
+
+      /* Responsive: move tasks below */
+      @media (max-width: 980px) {
+        .app {
+          grid-template-columns: 1fr;
+        }
+        .timer-panel,
+        .tasks-panel {
+          min-height: unset;
+        }
+      }
+
+      @media (max-width: 460px) {
+        .controls {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .btn {
+          width: 100%;
+          min-width: unset;
+        }
+        .music {
+          grid-template-columns: 1fr;
+          gap: 10px;
+        }
+      }
+    </style>
+    <!-- Spec v1.0 overrides (sci-fi theme + layout) -->
+    <style>
+      :root {
+        --color-bg-primary: #0d1117;
+        --color-bg-secondary: #1a1a2e;
+        --color-bg-panel: #16213e;
+        --color-accent: #00b4d8;
+        --color-accent-bright: #48cae4;
+        --color-accent-dim: rgba(0, 180, 216, 0.15);
+        --color-text-primary: #ffffff;
+        --color-text-secondary: #a8a8b3;
+        --color-border: rgba(0, 180, 216, 0.2);
+        --color-glow: rgba(0, 180, 216, 0.5);
+        --color-hud: #1e2a4a;
+
+        --font-display: "Orbitron", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        --font-ui: "Rajdhani", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        --font-body: "DM Sans", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+
+        --topbar-height: 52px;
+        --music-bar-height: 56px;
+        --button-height: 52px;
+        --sidebar-width: 360px;
+        --action-size: 400px;
+
+        --space-xs: 8px;
+        --space-sm: 16px;
+        --space-md: 24px;
+        --space-lg: 40px;
+        --space-xl: 56px;
+
+        --shadow-glow: 0 0 12px var(--color-glow);
+        --shadow-glow-strong: 0 0 24px var(--color-glow);
+        --ring-glow: drop-shadow(0 0 10px var(--color-accent));
+
+        --transition-fast: 150ms ease;
+        --transition-normal: 300ms ease;
+      }
+
+      body {
+        background: radial-gradient(900px 520px at 50% 30%, rgba(0, 180, 216, 0.12), transparent 60%),
+          var(--color-bg-primary);
+        color: var(--color-text-primary);
+        font: 14px/1.35 var(--font-body);
+      }
+
+      /* Particle canvas inside left panel */
+      .particle-canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 1;
+      }
+
+      .app {
+        z-index: 1;
+        grid-template-columns: 1fr var(--sidebar-width);
+        gap: var(--space-sm);
+        padding: var(--space-sm);
+        padding-bottom: calc(var(--space-sm) + var(--music-bar-height));
+      }
+
+      /* Two-panel container */
+      .left-panel {
+        position: relative;
+        display: grid;
+        grid-template-rows: var(--topbar-height) auto auto 1fr var(--music-bar-height);
+        min-height: calc(100vh - (var(--space-sm) * 2) - var(--music-bar-height));
+        overflow-x: hidden;
+        overflow-y: auto;
+        padding-bottom: var(--music-bar-height);
+        border: 1px solid rgba(0, 180, 216, 0.22);
+        background: linear-gradient(180deg, rgba(26, 26, 46, 0.35), rgba(13, 17, 23, 0.35));
+        box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(0, 180, 216, 0.06), 0 0 18px rgba(0, 180, 216, 0.08);
+        border-radius: 14px;
+      }
+
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 var(--space-md);
+        height: var(--topbar-height);
+        background: rgba(13, 17, 23, 0.58);
+        border-bottom: 1px solid rgba(0, 180, 216, 0.22);
+        backdrop-filter: blur(8px);
+      }
+
+      .brand {
+        font-family: var(--font-ui);
+        font-weight: 600;
+        font-size: 18px;
+        color: var(--color-text-primary);
+        letter-spacing: 0.04em;
+      }
+
+      .ghost-link {
+        border: 1px solid transparent;
+        color: var(--color-text-secondary);
+        transition: color var(--transition-fast), border-color var(--transition-fast);
+      }
+      .ghost-link:hover {
+        color: var(--color-accent);
+        border-color: rgba(0, 180, 216, 0.15);
+      }
+      .ghost-link:focus-visible {
+        outline: 2px solid var(--color-accent);
+      }
+
+      .banner {
+        text-align: center;
+        font-style: normal;
+        font-family: var(--font-display);
+        font-size: 14px;
+        letter-spacing: 0.08em;
+        color: rgba(255, 255, 255, 0.9);
+        padding: 12px var(--space-md);
+        border-top: 1px solid rgba(0, 180, 216, 0.15);
+        border-bottom: 0;
+      }
+
+      .tabs {
+        position: relative;
+        display: flex;
+        justify-content: center;
+        gap: 22px;
+        padding: var(--space-md) var(--space-md) var(--space-sm);
+        font-family: var(--font-ui);
+      }
+
+      .tab {
+        position: relative;
+        display: inline-flex;
+        align-items: baseline;
+        gap: 10px;
+        border: 0;
+        background: transparent;
+        padding: 6px 2px 10px;
+        color: var(--color-text-secondary);
+        cursor: pointer;
+        font-size: 16px;
+        letter-spacing: 0.02em;
+      }
+      .tab:hover {
+        color: var(--color-text-primary);
+      }
+      .tab[aria-selected="true"] {
+        color: var(--color-text-primary);
+        font-weight: 700;
+      }
+      .tab-badge {
+        font-family: var(--font-display);
+        font-size: 12px;
+        color: rgba(72, 202, 228, 0.85);
+      }
+      .tab:focus-visible {
+        outline: 2px solid var(--color-accent);
+        outline-offset: 4px;
+        border-radius: 8px;
+      }
+
+      .tab-underline {
+        position: absolute;
+        bottom: 8px;
+        height: 2px;
+        width: 80px;
+        left: 0;
+        transform: translateX(-50%);
+        background: var(--color-accent);
+        box-shadow: 0 0 12px rgba(0, 180, 216, 0.35);
+        border-radius: 2px;
+        transition: left var(--transition-normal), width var(--transition-normal);
+      }
+
+      .timer-area {
+        position: relative;
+        display: grid;
+        place-items: center;
+        align-items: center;
+        padding: var(--space-lg) var(--space-md) var(--space-md);
+      }
+
+      /* HUD layer behind ring */
+      .hud-layer {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        opacity: 0.25;
+        pointer-events: none;
+        background:
+          repeating-linear-gradient(135deg, rgba(42, 63, 111, 0.40) 0 2px, transparent 2px 18px),
+          repeating-linear-gradient(45deg, rgba(42, 63, 111, 0.30) 0 1px, transparent 1px 22px);
+        mask-image: radial-gradient(circle at 50% 45%, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0) 65%);
+        transform-origin: 50% 50%;
+        animation: hudDrift 28s linear infinite;
+      }
+
+      .hud-dots {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+      }
+      .hud-dot {
+        position: absolute;
+        width: 4px;
+        height: 4px;
+        border-radius: 999px;
+        background: rgba(0, 180, 216, 0.45);
+        box-shadow: 0 0 6px #00b4d8;
+        animation: dotPulse 2.1s ease-in-out infinite;
+      }
+      @keyframes hudDrift {
+        0% {
+          transform: translate3d(0, 0, 0) rotate(0deg);
+        }
+        100% {
+          transform: translate3d(-18px, 10px, 0) rotate(2deg);
+        }
+      }
+      @keyframes dotPulse {
+        0%,
+        100% {
+          opacity: 0.35;
+        }
+        50% {
+          opacity: 0.8;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .hud-layer,
+        .hud-dot {
+          animation: none !important;
+        }
+      }
+
+      /* Ring overrides */
+      .ring-wrap {
+        z-index: 10;
+        width: min(var(--action-size), 72vw);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .ring-svg {
+        filter: var(--ring-glow);
+        will-change: transform;
+      }
+      .status-label {
+        font-family: var(--font-ui);
+        letter-spacing: 0.18em;
+        color: var(--color-text-secondary);
+        font-size: 12px;
+      }
+      .time {
+        font-family: var(--font-display);
+        letter-spacing: 0.05em;
+        font-weight: 700;
+      }
+
+      /* Primary action button (START/STOP) */
+      .controls {
+        padding: var(--space-md) var(--space-md) var(--space-lg);
+        align-items: center;
+      }
+      .btn {
+        border: 1.5px solid var(--color-accent);
+        background: rgba(0, 180, 216, 0.08);
+        color: var(--color-accent);
+        border-radius: 6px;
+        height: var(--button-height);
+        min-width: min(var(--action-size), 85%);
+        font-family: var(--font-ui);
+        font-weight: 700;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        transition: all 200ms ease;
+        box-shadow: 0 0 12px rgba(0, 180, 216, 0.5), inset 0 0 8px rgba(0, 180, 216, 0.1);
+      }
+      .btn:hover {
+        background: rgba(0, 180, 216, 0.2);
+        color: var(--color-text-primary);
+        box-shadow: var(--shadow-glow-strong), inset 0 0 10px rgba(0, 180, 216, 0.15);
+      }
+      .btn:active {
+        transform: scale(0.97);
+      }
+      .btn:focus-visible {
+        outline: 2px solid var(--color-accent);
+      }
+
+      /* Music bar fixed at bottom (left panel only) */
+      .musicbar {
+        z-index: 100;
+        height: var(--music-bar-height);
+        display: grid;
+        grid-template-columns: auto auto auto 1fr auto auto;
+        align-items: center;
+        gap: 14px;
+        padding: 0 var(--space-md);
+        background: rgba(13, 13, 13, 0.95);
+        border-top: 1px solid rgba(0, 180, 216, 0.15);
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100vw;
+      }
+      .iconbar-btn {
+        border: 0;
+        background: transparent;
+        color: var(--color-text-secondary);
+        padding: 6px;
+        border-radius: 8px;
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+        transition: color var(--transition-fast), background var(--transition-fast);
+      }
+      .iconbar-btn:hover {
+        color: var(--color-accent);
+        background: rgba(0, 180, 216, 0.08);
+      }
+      .iconbar-btn:focus-visible {
+        outline: 2px solid var(--color-accent);
+        outline-offset: 2px;
+      }
+      .musicbar .track {
+        font-size: 13px;
+        font-style: italic;
+        color: var(--color-text-secondary);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .volume {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .volume input[type="range"] {
+        width: 120px;
+      }
+
+      /* Right sidebar visuals */
+      .tasks-panel {
+        background: linear-gradient(180deg, rgba(26, 26, 46, 0.55), rgba(13, 17, 23, 0.45));
+        border: 1px solid rgba(0, 180, 216, 0.20);
+        box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(0, 180, 216, 0.05), 0 0 18px rgba(0, 180, 216, 0.07);
+        min-height: calc(100vh - (var(--space-sm) * 2) - var(--music-bar-height));
+        padding-bottom: var(--music-bar-height);
+      }
+
+      .task-input {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .task-input button {
+        height: 44px;
+        min-width: 44px;
+      }
+
+      .tasks-header {
+        border-bottom: 1px solid rgba(0, 180, 216, 0.16);
+      }
+      .tasks-header .count {
+        color: rgba(72, 202, 228, 0.9);
+        font-family: var(--font-display);
+        font-size: 12px;
+      }
+      .tasks-header h2 {
+        font-family: var(--font-ui);
+        font-size: 18px;
+      }
+
+      .task-input input {
+        border: 1px solid rgba(0, 180, 216, 0.18);
+        background: rgba(13, 17, 23, 0.28);
+        box-shadow: inset 0 0 0 1px rgba(0, 180, 216, 0.04);
+      }
+      .task-input input:focus {
+        border-color: rgba(72, 202, 228, 0.55);
+        box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.14);
+      }
+      .task-input button {
+        border: 1px solid rgba(0, 180, 216, 0.35);
+        background: rgba(0, 180, 216, 0.12);
+        color: rgba(255, 255, 255, 0.92);
+        box-shadow: 0 0 14px rgba(0, 180, 216, 0.16);
+      }
+      .task-input button:hover {
+        background: rgba(0, 180, 216, 0.20);
+      }
+
+      .task-list {
+        background: rgba(13, 17, 23, 0.30);
+        border: 1px solid rgba(0, 180, 216, 0.16);
+        box-shadow: inset 0 0 0 1px rgba(0, 180, 216, 0.04);
+      }
+      .task-item {
+        border: 1px solid rgba(0, 180, 216, 0.00);
+      }
+      .task-item:hover {
+        background: rgba(0, 180, 216, 0.06);
+        border-color: rgba(0, 180, 216, 0.10);
+      }
+      .icon-btn {
+        border: 1px solid rgba(0, 180, 216, 0.22);
+        background: rgba(0, 180, 216, 0.08);
+        color: rgba(255, 255, 255, 0.88);
+      }
+      .icon-btn:hover {
+        background: rgba(0, 180, 216, 0.16);
+      }
+      .task-list::-webkit-scrollbar {
+        width: 6px;
+      }
+      .task-list::-webkit-scrollbar-thumb {
+        background: rgba(0, 180, 216, 0.65);
+        border-radius: 999px;
+      }
+      .task-list::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.2);
+      }
+
+      /* Responsive stack */
+      @media (max-width: 980px) {
+        .app {
+          grid-template-columns: 1fr;
+        }
+        .tasks-panel {
+          min-height: unset;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <section class="left-panel" aria-label="Pomodoro Timer">
+        <canvas id="particleCanvas" class="particle-canvas" aria-hidden="true"></canvas>
+        <div class="topbar" role="banner">
+          <div class="brand" aria-label="App name">kytia pomo timer</div>
+          <div class="top-actions">
+            <button id="restartBtn" class="ghost-link" type="button" aria-label="Restart session" title="Restart session">
+              <span aria-hidden="true">↺</span>
+              <span>Restart session</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="banner" aria-live="polite">
+          <span id="bannerText">why don't you conquer something today? 🙂</span>
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="Session tabs">
+          <button class="tab" id="tab-pomodoro" role="tab" aria-selected="true" aria-controls="timerPanel" data-tab="pomodoro">
+            Pomodoro <span class="tab-badge" id="focusCount">0</span>
+          </button>
+          <button class="tab" id="tab-rest" role="tab" aria-selected="false" aria-controls="timerPanel" data-tab="rest">
+            Rest <span class="tab-badge" id="breakCount">0</span>
+          </button>
+          <button class="tab" id="tab-longRest" role="tab" aria-selected="false" aria-controls="timerPanel" data-tab="longRest">
+            Long Rest <span class="tab-badge" id="longRestCount">0</span>
+          </button>
+          <div class="tab-underline" id="tabUnderline" aria-hidden="true"></div>
+        </div>
+
+        <div class="timer-area" id="timerPanel">
+          <div class="hud-layer" aria-hidden="true"></div>
+          <div class="hud-dots" aria-hidden="true">
+            <div class="hud-dot" style="left: 12%; top: 28%; animation-duration: 1.7s"></div>
+            <div class="hud-dot" style="left: 78%; top: 22%; animation-delay: 0.4s; animation-duration: 2.3s"></div>
+            <div class="hud-dot" style="left: 18%; top: 72%; animation-delay: 0.9s; animation-duration: 2.0s"></div>
+            <div class="hud-dot" style="left: 84%; top: 74%; animation-delay: 1.2s; animation-duration: 2.5s"></div>
+          </div>
+
+          <div class="ring-wrap" aria-label="Timer ring">
+            <!-- Segmented gradient progress ring (SVG) -->
+            <svg class="ring-svg" viewBox="0 0 220 220" role="img" aria-label="Progress ring">
+              <defs>
+                <linearGradient id="ringGradient" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="var(--color-accent-bright)" />
+                  <stop offset="100%" stop-color="var(--color-accent)" />
+                </linearGradient>
+                <filter id="softGlow2" x="-40%" y="-40%" width="180%" height="180%">
+                  <feGaussianBlur stdDeviation="4" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
+              <circle
+                id="ringTrack"
+                cx="110"
+                cy="110"
+                r="86"
+                fill="transparent"
+                stroke="rgba(0,180,216,0.10)"
+                stroke-width="14"
+                stroke-dasharray="10 4"
+              />
+              <circle
+                id="ringProgress"
+                cx="110"
+                cy="110"
+                r="86"
+                fill="transparent"
+                stroke="url(#ringGradient)"
+                stroke-width="14"
+                stroke-linecap="butt"
+                stroke-dasharray="10 4"
+                transform="rotate(-90 110 110)"
+                filter="url(#softGlow2)"
+              />
+            </svg>
+
+            <div class="time-stack">
+              <div id="statusLabel" class="status-label">FOCUS</div>
+              <div id="timeText" class="time" aria-live="polite">25:00</div>
+              <div id="runningHint" class="subtle"></div>
+              <div id="timerAria" class="subtle" style="position: absolute; left: -9999px; top: auto"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="controls" aria-label="Timer controls">
+          <button id="startPauseBtn" class="btn" type="button" aria-label="Start timer">Start</button>
+        </div>
+
+        <!-- Music bar (fixed at bottom of left panel) -->
+        <div class="musicbar" aria-label="Music player bar">
+          <button class="iconbar-btn" id="musicMenuBtn" type="button" aria-label="Open playlist (placeholder)" title="Playlist">
+            ≡
+          </button>
+          <button class="iconbar-btn" id="musicPrevBtn" type="button" aria-label="Previous track (placeholder)" title="Previous">
+            ⏮
+          </button>
+          <button class="iconbar-btn" id="musicToggleBtn" type="button" aria-pressed="false" aria-label="Play music" title="Play/Pause"></button>
+          <button class="iconbar-btn" id="musicNextBtn" type="button" aria-label="Next track (placeholder)" title="Next">
+            ⏭
+          </button>
+          <div class="volume" aria-label="Volume control">
+            <span aria-hidden="true" style="color: var(--color-text-secondary)">🔊</span>
+            <input id="volumeRange" type="range" min="0" max="1" step="0.01" />
+            <span id="volumeValue" class="subtle" style="min-width: 44px; text-align: right">50%</span>
+          </div>
+          <div class="track" id="trackLabel">Background music - Lofi</div>
+          <button class="iconbar-btn" id="musicExpandBtn" type="button" aria-label="Expand player (placeholder)" title="Expand">
+            ⛶
+          </button>
+        </div>
+
+        <!-- You can replace the src below with any personal audio file. -->
+        <audio
+          id="bgAudio"
+          loop
+          preload="auto"
+          src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA="
+        ></audio>
+      </section>
+
+      <aside class="card tasks-panel" aria-label="Task list panel">
+        <div class="tasks-header">
+          <div style="display: flex; align-items: baseline; gap: 10px">
+            <h2>Tasks</h2>
+            <div class="count" id="taskCount">0</div>
+          </div>
+          <button id="taskOptionsBtn" class="ghost-link" type="button" aria-label="Task options" title="Options">⋯</button>
+        </div>
+
+        <form class="task-input" id="taskForm" autocomplete="off">
+          <input id="taskInput" type="text" placeholder="add task" />
+          <button type="submit" aria-label="Add task" title="Add task">+</button>
+        </form>
+
+        <div class="task-list" id="taskList" role="list" aria-label="Tasks list"></div>
+      </aside>
+    </main>
+
+    <!-- Restart confirmation modal -->
+    <div
+      id="restartModal"
+      style="
+        position: fixed;
+        inset: 0;
+        display: none;
+        place-items: center;
+        background: rgba(0, 0, 0, 0.55);
+        z-index: 1000;
+      "
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="restartTitle"
+    >
+      <div
+        style="
+          width: min(520px, 92vw);
+          border: 1px solid rgba(0, 180, 216, 0.25);
+          border-radius: 12px;
+          background: rgba(26, 26, 46, 0.95);
+          box-shadow: 0 0 24px rgba(0, 180, 216, 0.25);
+          padding: 18px;
+        "
+      >
+        <div id="restartTitle" style="font-family: var(--font-ui); font-weight: 700; font-size: 18px; margin-bottom: 6px">
+          Restart session?
+        </div>
+        <div style="color: var(--color-text-secondary); margin-bottom: 16px">
+          Ini akan mereset timer ke Pomodoro dan mengatur ulang semua counter sesi ke 0.
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px">
+          <button id="restartCancelBtn" class="ghost-link" type="button">Cancel</button>
+          <button id="restartConfirmBtn" class="btn" type="button" style="min-width: 160px; height: 44px">Confirm</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      /**
+       * =========================================================
+       *  Local Storage Keys (Persisted state)
+       * =========================================================
+       * - Tasks list
+       * - Music volume
+       * - Music play/pause last state
+       * - Session counts
+       */
+      const LS_KEYS = {
+        tasks: "pomo_tasks_v1",
+        musicVolume: "pomo_music_volume_v1",
+        musicPlaying: "pomo_music_playing_v1",
+        sessionCounts: "pomo_session_counts_v1",
+      };
+
+      /**
+       * =========================================================
+       *  Default durations (seconds)
+       * =========================================================
+       */
+      const DURATIONS = {
+        pomodoro: 25 * 60, // 25 minutes
+        rest: 5 * 60, // 5 minutes
+        longRest: 15 * 60, // 15 minutes
+      };
+
+      /**
+       * =========================================================
+       *  DOM Elements
+       * =========================================================
+       */
+      const el = {
+        bannerText: document.getElementById("bannerText"),
+        statusLabel: document.getElementById("statusLabel"),
+        timeText: document.getElementById("timeText"),
+        timerAria: document.getElementById("timerAria"),
+        runningHint: document.getElementById("runningHint"),
+        startPauseBtn: document.getElementById("startPauseBtn"),
+        restartBtn: document.getElementById("restartBtn"),
+        ringProgress: document.getElementById("ringProgress"),
+        ringWrap: document.querySelector(".ring-wrap"),
+        tabs: Array.from(document.querySelectorAll(".tab")),
+        tabUnderline: document.getElementById("tabUnderline"),
+        focusCount: document.getElementById("focusCount"),
+        breakCount: document.getElementById("breakCount"),
+        longRestCount: document.getElementById("longRestCount"),
+        // music
+        bgAudio: document.getElementById("bgAudio"),
+        musicToggleBtn: document.getElementById("musicToggleBtn"),
+        musicPrevBtn: document.getElementById("musicPrevBtn"),
+        musicNextBtn: document.getElementById("musicNextBtn"),
+        musicMenuBtn: document.getElementById("musicMenuBtn"),
+        musicExpandBtn: document.getElementById("musicExpandBtn"),
+        volumeRange: document.getElementById("volumeRange"),
+        volumeValue: document.getElementById("volumeValue"),
+        trackLabel: document.getElementById("trackLabel"),
+        // tasks
+        taskForm: document.getElementById("taskForm"),
+        taskInput: document.getElementById("taskInput"),
+        taskList: document.getElementById("taskList"),
+        taskCount: document.getElementById("taskCount"),
+        taskOptionsBtn: document.getElementById("taskOptionsBtn"),
+        // modal
+        restartModal: document.getElementById("restartModal"),
+        restartCancelBtn: document.getElementById("restartCancelBtn"),
+        restartConfirmBtn: document.getElementById("restartConfirmBtn"),
+      };
+
+      /**
+       * =========================================================
+       *  Helpers
+       * =========================================================
+       */
+      function clamp(n, min, max) {
+        return Math.max(min, Math.min(max, n));
+      }
+
+      function formatTime(seconds) {
+        const s = Math.max(0, Math.floor(seconds));
+        const mm = String(Math.floor(s / 60)).padStart(2, "0");
+        const ss = String(s % 60).padStart(2, "0");
+        return `${mm}:${ss}`;
+      }
+
+      function safeJsonParse(str, fallback) {
+        try {
+          return JSON.parse(str);
+        } catch {
+          return fallback;
+        }
+      }
+
+      function readSessionCounts() {
+        const raw = localStorage.getItem(LS_KEYS.sessionCounts);
+        const parsed = safeJsonParse(raw || "{}", {});
+        const safe = {
+          pomodoro: Number(parsed?.pomodoro) || 0,
+          rest: Number(parsed?.rest) || 0,
+          longRest: Number(parsed?.longRest) || 0,
+        };
+        return safe;
+      }
+
+      function writeSessionCounts(counts) {
+        localStorage.setItem(LS_KEYS.sessionCounts, JSON.stringify(counts));
+      }
+
+      function secondsToAria(seconds) {
+        const s = Math.max(0, Math.floor(seconds));
+        const m = Math.floor(s / 60);
+        const r = s % 60;
+        const minPart = `${m} minute${m === 1 ? "" : "s"}`;
+        const secPart = `${r} second${r === 1 ? "" : "s"}`;
+        return `Timer: ${minPart} ${secPart} remaining`;
+      }
+
+      /**
+       * =========================================================
+       *  Web Audio: simple beep notification
+       * =========================================================
+       * - Uses Oscillator + Gain
+       * - Works without external files/backend
+       * - Must be called after a user gesture at least once in some browsers
+       */
+      let audioCtx = null;
+      function ensureAudioContext() {
+        if (!audioCtx) {
+          const Ctx = window.AudioContext || window.webkitAudioContext;
+          if (Ctx) audioCtx = new Ctx();
+        }
+        return audioCtx;
+      }
+
+      async function beep({ frequency = 880, durationMs = 160, volume = 0.2 } = {}) {
+        const ctx = ensureAudioContext();
+        if (!ctx) return;
+
+        // Resume context if suspended (common on first interaction)
+        if (ctx.state === "suspended") {
+          try {
+            await ctx.resume();
+          } catch {
+            // ignore
+          }
+        }
+
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = "sine";
+        osc.frequency.value = frequency;
+
+        gain.gain.value = 0;
+        gain.gain.setValueAtTime(0, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(volume, ctx.currentTime + 0.01);
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + durationMs / 1000);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start();
+        osc.stop(ctx.currentTime + durationMs / 1000 + 0.02);
+      }
+
+      /**
+       * =========================================================
+       *  Music Player + Persistence
+       * =========================================================
+       */
+      function loadMusicPrefs() {
+        const volRaw = localStorage.getItem(LS_KEYS.musicVolume);
+        const vol = clamp(volRaw ? Number(volRaw) : 0.5, 0, 1);
+        el.bgAudio.volume = vol;
+        el.volumeRange.value = String(vol);
+        el.volumeValue.textContent = `${Math.round(vol * 100)}%`;
+
+        const playing = localStorage.getItem(LS_KEYS.musicPlaying) === "true";
+        setMusicUiState(playing);
+
+        // Autoplay restrictions: we can only actually start playback after a user gesture.
+        // We keep UI state persisted; real playback starts on first user interaction.
+        if (playing) {
+          // Attempt (may fail silently until gesture). We'll ignore errors.
+          el.bgAudio.play().catch(() => {});
+        }
+      }
+
+      function setMusicUiState(isPlaying) {
+        // Use simple inline SVG icons (no text label as requested)
+        el.musicToggleBtn.innerHTML = isPlaying
+          ? `
+            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor"></rect>
+              <rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor"></rect>
+            </svg>
+          `
+          : `
+            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M8 5v14l11-7L8 5z" fill="currentColor"></path>
+            </svg>
+          `;
+        el.musicToggleBtn.setAttribute("aria-pressed", String(isPlaying));
+        el.musicToggleBtn.setAttribute("aria-label", isPlaying ? "Pause music" : "Play music");
+      }
+
+      async function setMusicPlaying(isPlaying) {
+        localStorage.setItem(LS_KEYS.musicPlaying, String(isPlaying));
+        setMusicUiState(isPlaying);
+
+        if (isPlaying) {
+          try {
+            await el.bgAudio.play();
+          } catch {
+            // If browser blocks autoplay, user can press Play Music manually.
+          }
+        } else {
+          el.bgAudio.pause();
+        }
+      }
+
+      el.musicToggleBtn.addEventListener("click", async () => {
+        // Ensure WebAudio can beep later (unlock after gesture)
+        ensureAudioContext();
+        if (audioCtx && audioCtx.state === "suspended") {
+          try {
+            await audioCtx.resume();
+          } catch {
+            // ignore
+          }
+        }
+
+        const currentlyPlaying = !el.bgAudio.paused;
+        await setMusicPlaying(!currentlyPlaying);
+      });
+
+      el.volumeRange.addEventListener("input", () => {
+        const vol = clamp(Number(el.volumeRange.value), 0, 1);
+        el.bgAudio.volume = vol;
+        el.volumeValue.textContent = `${Math.round(vol * 100)}%`;
+        localStorage.setItem(LS_KEYS.musicVolume, String(vol));
+      });
+
+      // Placeholder buttons (no playlist system yet, keep UI as spec)
+      for (const btn of [el.musicPrevBtn, el.musicNextBtn, el.musicMenuBtn, el.musicExpandBtn]) {
+        if (!btn) continue;
+        btn.addEventListener("click", () => {
+          // no-op placeholder
+        });
+      }
+
+      /**
+       * =========================================================
+       *  Task List + Persistence
+       * =========================================================
+       * - Stored in localStorage
+       * - Each item: { id, text, done }
+       */
+      /** @type {{id:string,text:string,done:boolean}[]} */
+      let tasks = [];
+
+      function saveTasks() {
+        localStorage.setItem(LS_KEYS.tasks, JSON.stringify(tasks));
+        renderTasks();
+      }
+
+      function loadTasks() {
+        const raw = localStorage.getItem(LS_KEYS.tasks);
+        const parsed = safeJsonParse(raw || "[]", []);
+        tasks = Array.isArray(parsed) ? parsed : [];
+        renderTasks();
+      }
+
+      function renderTasks() {
+        el.taskList.innerHTML = "";
+
+        // update count (show total tasks)
+        el.taskCount.textContent = String(tasks.length);
+
+        const frag = document.createDocumentFragment();
+        for (const t of tasks) {
+          const row = document.createElement("div");
+          row.className = "task-item";
+          row.setAttribute("role", "listitem");
+
+          const cb = document.createElement("input");
+          cb.type = "checkbox";
+          cb.checked = Boolean(t.done);
+          cb.setAttribute("aria-label", "Mark task done");
+          cb.addEventListener("change", () => {
+            t.done = cb.checked;
+            saveTasks();
+          });
+
+          const text = document.createElement("div");
+          text.className = "task-text" + (t.done ? " done" : "");
+          text.textContent = t.text;
+          text.title = t.text;
+
+          const del = document.createElement("button");
+          del.className = "icon-btn";
+          del.type = "button";
+          del.textContent = "Delete";
+          del.addEventListener("click", () => {
+            tasks = tasks.filter((x) => x.id !== t.id);
+            saveTasks();
+          });
+
+          row.append(cb, text, del);
+          frag.appendChild(row);
+        }
+
+        el.taskList.appendChild(frag);
+      }
+
+      function addTask(text) {
+        const trimmed = String(text || "").trim();
+        if (!trimmed) return;
+        tasks.unshift({
+          id: crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2),
+          text: trimmed,
+          done: false,
+        });
+        saveTasks();
+      }
+
+      el.taskForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        addTask(el.taskInput.value);
+        el.taskInput.value = "";
+        el.taskInput.focus();
+      });
+
+      // Task options menu (⋯)
+      let taskMenuEl = null;
+      function closeTaskMenu() {
+        if (taskMenuEl) {
+          taskMenuEl.remove();
+          taskMenuEl = null;
+        }
+      }
+
+      function openTaskMenu() {
+        closeTaskMenu();
+        const rect = el.taskOptionsBtn.getBoundingClientRect();
+        const menu = document.createElement("div");
+        menu.setAttribute("role", "menu");
+        menu.style.position = "fixed";
+        menu.style.top = `${rect.bottom + 8}px`;
+        menu.style.left = `${Math.max(8, rect.right - 160)}px`;
+        menu.style.width = "160px";
+        menu.style.padding = "8px";
+        menu.style.borderRadius = "10px";
+        menu.style.border = "1px solid rgba(0,180,216,0.25)";
+        menu.style.background = "rgba(26,26,46,0.98)";
+        menu.style.boxShadow = "0 0 22px rgba(0,180,216,0.18)";
+        menu.style.zIndex = "1000";
+
+        const mkItem = (label, onClick) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.textContent = label;
+          b.style.width = "100%";
+          b.style.textAlign = "left";
+          b.style.padding = "10px 10px";
+          b.style.borderRadius = "8px";
+          b.style.border = "0";
+          b.style.background = "transparent";
+          b.style.color = "rgba(255,255,255,0.92)";
+          b.style.cursor = "pointer";
+          b.addEventListener("mouseenter", () => (b.style.background = "rgba(0,180,216,0.10)"));
+          b.addEventListener("mouseleave", () => (b.style.background = "transparent"));
+          b.addEventListener("click", () => {
+            onClick();
+            closeTaskMenu();
+          });
+          return b;
+        };
+
+        menu.appendChild(
+          mkItem("Clear done", () => {
+            tasks = tasks.filter((t) => !t.done);
+            saveTasks();
+          })
+        );
+        menu.appendChild(
+          mkItem("Clear all", () => {
+            tasks = [];
+            saveTasks();
+          })
+        );
+
+        document.body.appendChild(menu);
+        taskMenuEl = menu;
+      }
+
+      el.taskOptionsBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (taskMenuEl) closeTaskMenu();
+        else openTaskMenu();
+      });
+
+      document.addEventListener("click", () => closeTaskMenu());
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeTaskMenu();
+      });
+
+      /**
+       * =========================================================
+       *  Pomodoro Timer Logic
+       * =========================================================
+       * Spec v1.0:
+       * - Tabs: Pomodoro / Rest / Long Rest
+       * - START/STOP button (STOP resets to default duration)
+       * - Timer ends -> ring flashes, beep, session counter increments
+       * - Auto-advance: pomodoro -> (rest or long rest after each 4th pomodoro) -> pomodoro
+       * - Tab switch resets timer for that duration
+       * - Ring updates smoothly via requestAnimationFrame (per-frame)
+       * - Accessibility: aria label updated every second
+       * - Start timer triggers background music to start if not playing
+       */
+      /** @type {"pomodoro"|"rest"|"longRest"} */
+      let currentTab = "pomodoro";
+      /** @type {"idle"|"running"|"paused"} */
+      let timerState = "idle";
+      let durationSeconds = DURATIONS.pomodoro;
+      let timeRemaining = durationSeconds;
+      let endTimeMs = 0;
+      let rafId = 0;
+      let lastWholeSecond = -1;
+
+      let sessionCounts = readSessionCounts();
+
+      function updateCountsUi() {
+        el.focusCount.textContent = String(sessionCounts.pomodoro);
+        el.breakCount.textContent = String(sessionCounts.rest);
+        el.longRestCount.textContent = String(sessionCounts.longRest);
+      }
+
+      function tabToLabel(tab) {
+        if (tab === "pomodoro") return "FOCUS";
+        if (tab === "rest") return "BREAK";
+        return "LONG BREAK";
+      }
+
+      function tabToDuration(tab) {
+        return DURATIONS[tab];
+      }
+
+      function setButtonUi() {
+        const running = timerState === "running";
+        el.startPauseBtn.textContent = running ? "STOP" : "START";
+        el.startPauseBtn.setAttribute("aria-label", running ? "Stop timer" : "Start timer");
+        el.runningHint.textContent = running ? "Running…" : "";
+      }
+
+      function setTabSelected(tab) {
+        for (const t of el.tabs) {
+          const isSel = t.dataset.tab === tab;
+          t.setAttribute("aria-selected", String(isSel));
+        }
+      }
+
+      function moveUnderlineToSelected() {
+        const selected = el.tabs.find((t) => t.getAttribute("aria-selected") === "true") || el.tabs[0];
+        if (!selected) return;
+        const centerX = selected.offsetLeft + selected.offsetWidth / 2;
+        el.tabUnderline.style.width = `${Math.max(62, selected.offsetWidth * 0.7)}px`;
+        el.tabUnderline.style.left = `${centerX}px`;
+      }
+
+      function flashRingOnce() {
+        if (!el.ringWrap) return;
+        el.ringWrap.style.filter = "drop-shadow(0 0 18px rgba(0,180,216,0.9))";
+        setTimeout(() => {
+          el.ringWrap.style.filter = "";
+        }, 220);
+      }
+
+      function render(progressFloat) {
+        // progressFloat: remaining / duration (0..1)
+        const r = 86;
+        const circumference = 2 * Math.PI * r;
+        const progress = clamp(progressFloat, 0, 1);
+        el.ringProgress.style.strokeDashoffset = `${circumference * (1 - progress)}`;
+
+        const whole = Math.floor(timeRemaining);
+        if (whole !== lastWholeSecond) {
+          lastWholeSecond = whole;
+          el.timeText.textContent = formatTime(whole);
+          const aria = secondsToAria(whole);
+          el.timeText.setAttribute("aria-label", aria);
+          if (el.timerAria) el.timerAria.textContent = aria;
+        }
+      }
+
+      function stopRaf() {
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
+
+      function tickFrame() {
+        if (timerState !== "running") return;
+        const now = performance.now();
+        timeRemaining = Math.max(0, (endTimeMs - now) / 1000);
+        render(durationSeconds > 0 ? timeRemaining / durationSeconds : 0);
+
+        if (timeRemaining <= 0) {
+          stopRaf();
+          onTimerEnded();
+          return;
+        }
+        rafId = requestAnimationFrame(tickFrame);
+      }
+
+      async function ensureMusicPlayingIfNeeded() {
+        if (el.bgAudio.paused) await setMusicPlaying(true);
+      }
+
+
+      function nextTabAfterEnd(tab) {
+        if (tab === "pomodoro") {
+          // every 4th pomodoro => long rest, else short rest
+          const nextPomodoroCount = sessionCounts.pomodoro + 1;
+          return nextPomodoroCount % 4 === 0 ? "longRest" : "rest";
+        }
+        return "pomodoro";
+      }
+
+      function setTimerForTab(tab) {
+        currentTab = tab;
+        durationSeconds = tabToDuration(tab);
+        timeRemaining = durationSeconds;
+        lastWholeSecond = -1;
+        el.statusLabel.textContent = tabToLabel(tab);
+        render(1);
+      }
+
+      function switchTab(tab) {
+        timerState = "idle";
+        stopRaf();
+        setTabSelected(tab);
+        setTimerForTab(tab);
+        setButtonUi();
+        moveUnderlineToSelected();
+      }
+
+      function onTimerEnded() {
+        flashRingOnce();
+
+        // increment counter for the completed session
+        sessionCounts = { ...sessionCounts, [currentTab]: sessionCounts[currentTab] + 1 };
+        writeSessionCounts(sessionCounts);
+        updateCountsUi();
+
+        const next = nextTabAfterEnd(currentTab);
+        beep({ frequency: 880, durationMs: 180, volume: 0.22 });
+
+        // Auto-advance and keep running (autoplay)
+        switchTab(next);
+        timerState = "running";
+        setButtonUi();
+        endTimeMs = performance.now() + timeRemaining * 1000;
+        rafId = requestAnimationFrame(tickFrame);
+      }
+
+      el.startPauseBtn.addEventListener("click", async () => {
+        ensureAudioContext();
+        if (audioCtx && audioCtx.state === "suspended") {
+          try {
+            await audioCtx.resume();
+          } catch {
+            // ignore
+          }
+        }
+
+        if (timerState !== "running") {
+          timerState = "running";
+          setButtonUi();
+          await ensureMusicPlayingIfNeeded();
+          endTimeMs = performance.now() + timeRemaining * 1000;
+          stopRaf();
+          rafId = requestAnimationFrame(tickFrame);
+        } else {
+          // STOP => reset to full duration for current tab (not pause)
+          timerState = "idle";
+          stopRaf();
+          setTimerForTab(currentTab);
+          setButtonUi();
+        }
+      });
+
+      // Tabs: click + keyboard navigation
+      el.tabs.forEach((t) => {
+        t.addEventListener("click", () => switchTab(t.dataset.tab));
+        t.addEventListener("keydown", (e) => {
+          if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+          e.preventDefault();
+          const idx = el.tabs.indexOf(t);
+          const nextIdx = e.key === "ArrowRight" ? (idx + 1) % el.tabs.length : (idx - 1 + el.tabs.length) % el.tabs.length;
+          el.tabs[nextIdx].focus();
+        });
+      });
+
+      // Restart modal
+      function openRestartModal() {
+        el.restartModal.style.display = "grid";
+        el.restartCancelBtn.focus();
+      }
+      function closeRestartModal() {
+        el.restartModal.style.display = "none";
+      }
+
+      el.restartBtn.addEventListener("click", () => openRestartModal());
+      el.restartCancelBtn.addEventListener("click", () => closeRestartModal());
+      el.restartModal.addEventListener("click", (e) => {
+        if (e.target === el.restartModal) closeRestartModal();
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && el.restartModal.style.display !== "none") closeRestartModal();
+      });
+
+      el.restartConfirmBtn.addEventListener("click", () => {
+        sessionCounts = { pomodoro: 0, rest: 0, longRest: 0 };
+        writeSessionCounts(sessionCounts);
+        updateCountsUi();
+        closeRestartModal();
+        switchTab("pomodoro");
+      });
+
+      /**
+       * =========================================================
+       *  Canvas particle background (no external libs)
+       * =========================================================
+       */
+      const PARTICLE_COUNT = 60;
+      const PARTICLE_LINE_DISTANCE = 120;
+      const PARTICLE_COLOR = "#00B4D8";
+      const PARTICLE_GLOW_BLUR = 8;
+
+      /** @type {HTMLCanvasElement|null} */
+      let particleCanvas = null;
+      /** @type {CanvasRenderingContext2D|null} */
+      let particleCtx = null;
+      let particleRaf = 0;
+      /** @type {{x:number,y:number,vx:number,vy:number,radius:number,opacity:number}[]} */
+      let particles = [];
+
+      function rand(min, max) {
+        return Math.random() * (max - min) + min;
+      }
+
+      function resizeParticleCanvas() {
+        if (!particleCanvas) return;
+        const dpr = Math.max(1, window.devicePixelRatio || 1);
+        const rect = particleCanvas.getBoundingClientRect();
+        const w = Math.max(1, Math.floor(rect.width));
+        const h = Math.max(1, Math.floor(rect.height));
+        particleCanvas.width = Math.floor(w * dpr);
+        particleCanvas.height = Math.floor(h * dpr);
+        if (particleCtx) particleCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        // Clamp particles into bounds after resize (CSS pixels)
+        for (const p of particles) {
+          p.x = clamp(p.x, 0, w);
+          p.y = clamp(p.y, 0, h);
+        }
+      }
+
+      function initCanvasParticles() {
+        particleCanvas = document.getElementById("particleCanvas");
+        if (!particleCanvas) return;
+        particleCtx = particleCanvas.getContext("2d");
+        if (!particleCtx) return;
+
+        resizeParticleCanvas();
+        const rect = particleCanvas.getBoundingClientRect();
+        const w = Math.max(1, rect.width);
+        const h = Math.max(1, rect.height);
+
+        particles = Array.from({ length: PARTICLE_COUNT }, () => ({
+          x: Math.random() * w,
+          y: Math.random() * h,
+          vx: rand(-0.4, 0.4),
+          vy: rand(-0.4, 0.4),
+          radius: rand(2, 5),
+          opacity: rand(0.5, 1.0),
+        }));
+
+        window.addEventListener("resize", () => resizeParticleCanvas());
+
+        // (Re)start loop
+        if (particleRaf) cancelAnimationFrame(particleRaf);
+        particleRaf = requestAnimationFrame(stepCanvasParticles);
+      }
+
+      function stepCanvasParticles() {
+        if (!particleCanvas || !particleCtx) return;
+        const ctx = particleCtx;
+        const rect = particleCanvas.getBoundingClientRect();
+        const w = Math.max(1, rect.width);
+        const h = Math.max(1, rect.height);
+
+        ctx.clearRect(0, 0, w, h);
+
+        // Update + draw dots (glow)
+        ctx.shadowBlur = PARTICLE_GLOW_BLUR;
+        ctx.shadowColor = PARTICLE_COLOR;
+        ctx.fillStyle = PARTICLE_COLOR;
+
+        for (const p of particles) {
+          p.x += p.vx;
+          p.y += p.vy;
+
+          if (p.x < 0) {
+            p.x = 0;
+            p.vx *= -1;
+          } else if (p.x > w) {
+            p.x = w;
+            p.vx *= -1;
+          }
+
+          if (p.y < 0) {
+            p.y = 0;
+            p.vy *= -1;
+          } else if (p.y > h) {
+            p.y = h;
+            p.vy *= -1;
+          }
+
+          ctx.globalAlpha = p.opacity;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Draw lines (no glow)
+        ctx.globalAlpha = 1;
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = PARTICLE_COLOR;
+        ctx.lineWidth = 1;
+
+        for (let i = 0; i < particles.length; i++) {
+          for (let j = i + 1; j < particles.length; j++) {
+            const a = particles[i];
+            const b = particles[j];
+            const dx = a.x - b.x;
+            const dy = a.y - b.y;
+            const d = Math.sqrt(dx * dx + dy * dy);
+            if (d < PARTICLE_LINE_DISTANCE) {
+              const alpha = (1 - d / PARTICLE_LINE_DISTANCE) * 0.4;
+              ctx.globalAlpha = alpha;
+              ctx.beginPath();
+              ctx.moveTo(a.x, a.y);
+              ctx.lineTo(b.x, b.y);
+              ctx.stroke();
+            }
+          }
+        }
+
+        ctx.globalAlpha = 1;
+        particleRaf = requestAnimationFrame(stepCanvasParticles);
+      }
+
+      /**
+       * =========================================================
+       *  App init
+       * =========================================================
+       */
+      function init() {
+        // Load persisted data
+        loadTasks();
+        loadMusicPrefs();
+
+        // Session counters (persisted)
+        updateCountsUi();
+
+        // particle background (canvas)
+        initCanvasParticles();
+
+        // Keep UI in sync if the audio ends/pauses due to browser policies
+        el.bgAudio.addEventListener("play", () => setMusicUiState(true));
+        el.bgAudio.addEventListener("pause", () => setMusicUiState(false));
+
+        // Banner rotation
+        const banners = [
+          "why don't you conquer something today? 🙂",
+          "one step at a time. you got this. 🚀",
+          "focus now, reward later. ✨",
+          "small progress is still progress. 💡",
+        ];
+        let bannerIdx = 0;
+        setInterval(() => {
+          bannerIdx = (bannerIdx + 1) % banners.length;
+          el.bannerText.textContent = banners[bannerIdx];
+        }, 7000);
+
+        // Start on pomodoro tab
+        switchTab("pomodoro");
+        // Underline position after layout settles
+        requestAnimationFrame(() => moveUnderlineToSelected());
+      }
+
+      init();
+    </script>
+  </body>
+</html>
+
