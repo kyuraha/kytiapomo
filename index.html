@@ -1470,15 +1470,259 @@
        * - Accessibility: aria label updated every second
        * - Start timer triggers background music to start if not playing
        */
+    //   /** @type {"pomodoro"|"rest"|"longRest"} */
+    //   let currentTab = "pomodoro";
+    //   /** @type {"idle"|"running"|"paused"} */
+    //   let timerState = "idle";
+    //   let durationSeconds = DURATIONS.pomodoro;
+    //   let timeRemaining = durationSeconds;
+    //   let endTimeMs = 0;
+    //   let rafId = 0;
+    //   let lastWholeSecond = -1;
+
+    //   let sessionCounts = readSessionCounts();
+
+    //   function updateCountsUi() {
+    //     el.focusCount.textContent = String(sessionCounts.pomodoro);
+    //     el.breakCount.textContent = String(sessionCounts.rest);
+    //     el.longRestCount.textContent = String(sessionCounts.longRest);
+    //   }
+
+    //   function tabToLabel(tab) {
+    //     if (tab === "pomodoro") return "FOCUS";
+    //     if (tab === "rest") return "BREAK";
+    //     return "LONG BREAK";
+    //   }
+
+    //   function tabToDuration(tab) {
+    //     return DURATIONS[tab];
+    //   }
+
+    //   function setButtonUi() {
+    //     const running = timerState === "running";
+    //     el.startPauseBtn.textContent = running ? "STOP" : "START";
+    //     el.startPauseBtn.setAttribute("aria-label", running ? "Stop timer" : "Start timer");
+    //     el.runningHint.textContent = running ? "Running…" : "";
+    //   }
+
+    //   function setTabSelected(tab) {
+    //     for (const t of el.tabs) {
+    //       const isSel = t.dataset.tab === tab;
+    //       t.setAttribute("aria-selected", String(isSel));
+    //     }
+    //   }
+
+    //   function moveUnderlineToSelected() {
+    //     const selected = el.tabs.find((t) => t.getAttribute("aria-selected") === "true") || el.tabs[0];
+    //     if (!selected) return;
+    //     const centerX = selected.offsetLeft + selected.offsetWidth / 2;
+    //     el.tabUnderline.style.width = `${Math.max(62, selected.offsetWidth * 0.7)}px`;
+    //     el.tabUnderline.style.left = `${centerX}px`;
+    //   }
+
+    //   function flashRingOnce() {
+    //     if (!el.ringWrap) return;
+    //     el.ringWrap.style.filter = "drop-shadow(0 0 18px rgba(0,180,216,0.9))";
+    //     setTimeout(() => {
+    //       el.ringWrap.style.filter = "";
+    //     }, 220);
+    //   }
+
+    //   function render(progressFloat) {
+    //     // progressFloat: remaining / duration (0..1)
+    //     const r = 86;
+    //     const circumference = 2 * Math.PI * r;
+    //     const progress = clamp(progressFloat, 0, 1);
+    //     el.ringProgress.style.strokeDashoffset = `${circumference * (1 - progress)}`;
+
+    //     const whole = Math.floor(timeRemaining);
+    //     if (whole !== lastWholeSecond) {
+    //       lastWholeSecond = whole;
+    //       el.timeText.textContent = formatTime(whole);
+    //       const aria = secondsToAria(whole);
+    //       el.timeText.setAttribute("aria-label", aria);
+    //       if (el.timerAria) el.timerAria.textContent = aria;
+    //     }
+    //   }
+
+    //   function stopRaf() {
+    //     if (rafId) cancelAnimationFrame(rafId);
+    //     rafId = 0;
+    //   }
+
+    //   function tickFrame() {
+    //     if (timerState !== "running") return;
+    //     const now = performance.now();
+    //     timeRemaining = Math.max(0, (endTimeMs - now) / 1000);
+    //     render(durationSeconds > 0 ? timeRemaining / durationSeconds : 0);
+
+    //     if (timeRemaining <= 0) {
+    //       stopRaf();
+    //       onTimerEnded();
+    //       return;
+    //     }
+    //     rafId = requestAnimationFrame(tickFrame);
+    //   }
+
+    //   async function ensureMusicPlayingIfNeeded() {
+    //     if (el.bgAudio.paused) await setMusicPlaying(true);
+    //   }
+
+
+    //   function nextTabAfterEnd(tab) {
+    //     if (tab === "pomodoro") {
+    //       // every 4th pomodoro => long rest, else short rest
+    //       const nextPomodoroCount = sessionCounts.pomodoro + 1;
+    //       return nextPomodoroCount % 4 === 0 ? "longRest" : "rest";
+    //     }
+    //     return "pomodoro";
+    //   }
+
+    //   function setTimerForTab(tab) {
+    //     currentTab = tab;
+    //     durationSeconds = tabToDuration(tab);
+    //     timeRemaining = durationSeconds;
+    //     lastWholeSecond = -1;
+    //     el.statusLabel.textContent = tabToLabel(tab);
+    //     render(1);
+    //   }
+
+    //   function switchTab(tab) {
+    //     timerState = "idle";
+    //     stopRaf();
+    //     setTabSelected(tab);
+    //     setTimerForTab(tab);
+    //     setButtonUi();
+    //     moveUnderlineToSelected();
+    //   }
+
+    //   function onTimerEnded() {
+    //     flashRingOnce();
+
+    //     // increment counter for the completed session
+    //     sessionCounts = { ...sessionCounts, [currentTab]: sessionCounts[currentTab] + 1 };
+    //     writeSessionCounts(sessionCounts);
+    //     updateCountsUi();
+
+    //     const next = nextTabAfterEnd(currentTab);
+    //     beep({ frequency: 880, durationMs: 180, volume: 0.22 });
+
+    //     // Auto-advance and keep running (autoplay)
+    //     switchTab(next);
+    //     timerState = "running";
+    //     setButtonUi();
+    //     endTimeMs = performance.now() + timeRemaining * 1000;
+    //     rafId = requestAnimationFrame(tickFrame);
+    //   }
+
+    //   // el.startPauseBtn.addEventListener("click", async () => {
+    //   //   ensureAudioContext();
+    //   //   if (audioCtx && audioCtx.state === "suspended") {
+    //   //     try {
+    //   //       await audioCtx.resume();
+    //   //     } catch {
+    //   //       // ignore
+    //   //     }
+    //   //   }
+
+    //   //   if (timerState !== "running") {
+    //   //     timerState = "running";
+    //   //     setButtonUi();
+    //   //     await ensureMusicPlayingIfNeeded();
+    //   //     endTimeMs = performance.now() + timeRemaining * 1000;
+    //   //     stopRaf();
+    //   //     rafId = requestAnimationFrame(tickFrame);
+    //   //   } else {
+    //   //     // STOP => reset to full duration for current tab (not pause)
+    //   //     timerState = "idle";
+    //   //     stopRaf();
+    //   //     setTimerForTab(currentTab);
+    //   //     setButtonUi();
+    //   //   }
+    //   // });
+
+    //       el.startPauseBtn.addEventListener("click", async () => {
+    //   ensureAudioContext();
+    //   if (audioCtx && audioCtx.state === "suspended") {
+    //     try {
+    //       await audioCtx.resume();
+    //     } catch {
+    //       // ignore
+    //     }
+    //   }
+
+    //   if (timerState !== "running") {
+    //     // ✅ Pastikan timeRemaining > 0 sebelum mulai
+    //     if (timeRemaining <= 0) {
+    //       timeRemaining = durationSeconds;
+    //       render(1);
+    //     }
+    //     timerState = "running";
+    //     setButtonUi();
+    //     await ensureMusicPlayingIfNeeded();
+    //     endTimeMs = performance.now() + timeRemaining * 1000;
+    //     stopRaf();
+    //     rafId = requestAnimationFrame(tickFrame);
+    //   } else {
+    //     // STOP
+    //     timerState = "idle";
+    //     stopRaf();
+    //     setTimerForTab(currentTab);
+    //     setButtonUi();
+    //   }
+    // });
+
+    //   // Tabs: click + keyboard navigation
+    //   el.tabs.forEach((t) => {
+    //     t.addEventListener("click", () => switchTab(t.dataset.tab));
+    //     t.addEventListener("keydown", (e) => {
+    //       if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    //       e.preventDefault();
+    //       const idx = el.tabs.indexOf(t);
+    //       const nextIdx = e.key === "ArrowRight" ? (idx + 1) % el.tabs.length : (idx - 1 + el.tabs.length) % el.tabs.length;
+    //       el.tabs[nextIdx].focus();
+    //     });
+    //   });
+
+    //   // Restart modal
+    //   function openRestartModal() {
+    //     el.restartModal.style.display = "grid";
+    //     el.restartCancelBtn.focus();
+    //   }
+    //   function closeRestartModal() {
+    //     el.restartModal.style.display = "none";
+    //   }
+
+    //   el.restartBtn.addEventListener("click", () => openRestartModal());
+    //   el.restartCancelBtn.addEventListener("click", () => closeRestartModal());
+    //   el.restartModal.addEventListener("click", (e) => {
+    //     if (e.target === el.restartModal) closeRestartModal();
+    //   });
+    //   document.addEventListener("keydown", (e) => {
+    //     if (e.key === "Escape" && el.restartModal.style.display !== "none") closeRestartModal();
+    //   });
+
+    //   el.restartConfirmBtn.addEventListener("click", () => {
+    //     sessionCounts = { pomodoro: 0, rest: 0, longRest: 0 };
+    //     writeSessionCounts(sessionCounts);
+    //     updateCountsUi();
+    //     closeRestartModal();
+    //     switchTab("pomodoro");
+    //   });
+
+          /**
+       * =========================================================
+       *  Pomodoro Timer Logic (diperbaiki dengan setInterval)
+       * =========================================================
+       */
       /** @type {"pomodoro"|"rest"|"longRest"} */
       let currentTab = "pomodoro";
       /** @type {"idle"|"running"|"paused"} */
       let timerState = "idle";
       let durationSeconds = DURATIONS.pomodoro;
       let timeRemaining = durationSeconds;
-      let endTimeMs = 0;
-      let rafId = 0;
-      let lastWholeSecond = -1;
+      let timerInterval = null; // untuk update waktu per 100ms
+      let ringRaf = null; // khusus untuk animasi ring smooth
 
       let sessionCounts = readSessionCounts();
 
@@ -1528,50 +1772,112 @@
         }, 220);
       }
 
-      function render(progressFloat) {
-        // progressFloat: remaining / duration (0..1)
+      // Update tampilan angka dan ring (panggil setiap kali timeRemaining berubah)
+      function updateTimerDisplay() {
+        const whole = Math.floor(timeRemaining);
+        el.timeText.textContent = formatTime(whole);
+        const aria = secondsToAria(whole);
+        el.timeText.setAttribute("aria-label", aria);
+        if (el.timerAria) el.timerAria.textContent = aria;
+
+        // Update ring progress (smooth)
+        const progress = durationSeconds > 0 ? timeRemaining / durationSeconds : 0;
         const r = 86;
         const circumference = 2 * Math.PI * r;
-        const progress = clamp(progressFloat, 0, 1);
-        el.ringProgress.style.strokeDashoffset = `${circumference * (1 - progress)}`;
+        const offset = circumference * (1 - Math.min(1, Math.max(0, progress)));
+        el.ringProgress.style.strokeDashoffset = offset;
+      }
 
-        const whole = Math.floor(timeRemaining);
-        if (whole !== lastWholeSecond) {
-          lastWholeSecond = whole;
-          el.timeText.textContent = formatTime(whole);
-          const aria = secondsToAria(whole);
-          el.timeText.setAttribute("aria-label", aria);
-          if (el.timerAria) el.timerAria.textContent = aria;
+      function stopTimer() {
+        if (timerInterval) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+        }
+        if (ringRaf) {
+          cancelAnimationFrame(ringRaf);
+          ringRaf = null;
         }
       }
 
-      function stopRaf() {
-        if (rafId) cancelAnimationFrame(rafId);
-        rafId = 0;
-      }
-
-      function tickFrame() {
+      function startTimer() {
         if (timerState !== "running") return;
-        const now = performance.now();
-        timeRemaining = Math.max(0, (endTimeMs - now) / 1000);
-        render(durationSeconds > 0 ? timeRemaining / durationSeconds : 0);
-
         if (timeRemaining <= 0) {
-          stopRaf();
+          // Jika waktu habis, langsung selesaikan
           onTimerEnded();
           return;
         }
-        rafId = requestAnimationFrame(tickFrame);
+        const startTime = performance.now();
+        const initialRemaining = timeRemaining;
+        let lastUpdate = startTime;
+
+        stopTimer(); // bersihkan interval lama jika ada
+
+        // Update ring secara smooth dengan raf (opsional)
+        function updateRingSmooth() {
+          if (timerState !== "running") return;
+          const now = performance.now();
+          const elapsed = (now - startTime) / 1000;
+          const newRemaining = Math.max(0, initialRemaining - elapsed);
+          if (Math.abs(newRemaining - timeRemaining) > 0.01) {
+            // update timeRemaining sedikit demi sedikit untuk ring
+            timeRemaining = newRemaining;
+            const progress = durationSeconds > 0 ? timeRemaining / durationSeconds : 0;
+            const r = 86;
+            const circumference = 2 * Math.PI * r;
+            const offset = circumference * (1 - Math.min(1, Math.max(0, progress)));
+            el.ringProgress.style.strokeDashoffset = offset;
+          }
+          if (timerState === "running") {
+            ringRaf = requestAnimationFrame(updateRingSmooth);
+          }
+        }
+
+        // Update angka timer setiap 100ms
+        timerInterval = setInterval(() => {
+          if (timerState !== "running") return;
+          const now = performance.now();
+          const elapsed = (now - startTime) / 1000;
+          let newRemaining = initialRemaining - elapsed;
+          if (newRemaining <= 0) {
+            newRemaining = 0;
+            clearInterval(timerInterval);
+            timerInterval = null;
+            cancelAnimationFrame(ringRaf);
+            ringRaf = null;
+            timeRemaining = 0;
+            updateTimerDisplay();
+            onTimerEnded();
+            return;
+          }
+          // Bulatkan ke 0.01 untuk mengurangi noise, tapi tetap update
+          timeRemaining = newRemaining;
+          updateTimerDisplay();
+        }, 100);
+
+        ringRaf = requestAnimationFrame(updateRingSmooth);
       }
 
-      async function ensureMusicPlayingIfNeeded() {
-        if (el.bgAudio.paused) await setMusicPlaying(true);
-      }
+      function onTimerEnded() {
+        flashRingOnce();
+        // increment counter untuk sesi yang selesai
+        sessionCounts = { ...sessionCounts, [currentTab]: sessionCounts[currentTab] + 1 };
+        writeSessionCounts(sessionCounts);
+        updateCountsUi();
 
+        const next = nextTabAfterEnd(currentTab);
+        beep({ frequency: 880, durationMs: 180, volume: 0.22 });
+
+        // Auto-advance ke tab berikutnya dan mulai otomatis
+        switchTab(next);
+        // Set timer state menjadi running
+        timerState = "running";
+        setButtonUi();
+        // Mulai timer dengan sisa waktu yang baru (full duration dari tab baru)
+        startTimer();
+      }
 
       function nextTabAfterEnd(tab) {
         if (tab === "pomodoro") {
-          // every 4th pomodoro => long rest, else short rest
           const nextPomodoroCount = sessionCounts.pomodoro + 1;
           return nextPomodoroCount % 4 === 0 ? "longRest" : "rest";
         }
@@ -1582,97 +1888,50 @@
         currentTab = tab;
         durationSeconds = tabToDuration(tab);
         timeRemaining = durationSeconds;
-        lastWholeSecond = -1;
         el.statusLabel.textContent = tabToLabel(tab);
-        render(1);
+        updateTimerDisplay();
       }
 
       function switchTab(tab) {
-        timerState = "idle";
-        stopRaf();
+        // Hentikan timer jika sedang berjalan
+        if (timerState === "running") {
+          stopTimer();
+          timerState = "idle";
+        }
         setTabSelected(tab);
         setTimerForTab(tab);
         setButtonUi();
         moveUnderlineToSelected();
       }
 
-      function onTimerEnded() {
-        flashRingOnce();
-
-        // increment counter for the completed session
-        sessionCounts = { ...sessionCounts, [currentTab]: sessionCounts[currentTab] + 1 };
-        writeSessionCounts(sessionCounts);
-        updateCountsUi();
-
-        const next = nextTabAfterEnd(currentTab);
-        beep({ frequency: 880, durationMs: 180, volume: 0.22 });
-
-        // Auto-advance and keep running (autoplay)
-        switchTab(next);
-        timerState = "running";
-        setButtonUi();
-        endTimeMs = performance.now() + timeRemaining * 1000;
-        rafId = requestAnimationFrame(tickFrame);
-      }
-
-      // el.startPauseBtn.addEventListener("click", async () => {
-      //   ensureAudioContext();
-      //   if (audioCtx && audioCtx.state === "suspended") {
-      //     try {
-      //       await audioCtx.resume();
-      //     } catch {
-      //       // ignore
-      //     }
-      //   }
-
-      //   if (timerState !== "running") {
-      //     timerState = "running";
-      //     setButtonUi();
-      //     await ensureMusicPlayingIfNeeded();
-      //     endTimeMs = performance.now() + timeRemaining * 1000;
-      //     stopRaf();
-      //     rafId = requestAnimationFrame(tickFrame);
-      //   } else {
-      //     // STOP => reset to full duration for current tab (not pause)
-      //     timerState = "idle";
-      //     stopRaf();
-      //     setTimerForTab(currentTab);
-      //     setButtonUi();
-      //   }
-      // });
-
-          el.startPauseBtn.addEventListener("click", async () => {
-      ensureAudioContext();
-      if (audioCtx && audioCtx.state === "suspended") {
-        try {
-          await audioCtx.resume();
-        } catch {
-          // ignore
+      el.startPauseBtn.addEventListener("click", async () => {
+        ensureAudioContext();
+        if (audioCtx && audioCtx.state === "suspended") {
+          try {
+            await audioCtx.resume();
+          } catch {}
         }
-      }
 
-      if (timerState !== "running") {
-        // ✅ Pastikan timeRemaining > 0 sebelum mulai
-        if (timeRemaining <= 0) {
-          timeRemaining = durationSeconds;
-          render(1);
+        if (timerState !== "running") {
+          // START
+          if (timeRemaining <= 0) {
+            timeRemaining = durationSeconds;
+            updateTimerDisplay();
+          }
+          timerState = "running";
+          setButtonUi();
+          await ensureMusicPlayingIfNeeded();
+          startTimer();
+        } else {
+          // STOP: reset ke full duration untuk tab ini
+          stopTimer();
+          timerState = "idle";
+          setTimerForTab(currentTab);
+          setButtonUi();
         }
-        timerState = "running";
-        setButtonUi();
-        await ensureMusicPlayingIfNeeded();
-        endTimeMs = performance.now() + timeRemaining * 1000;
-        stopRaf();
-        rafId = requestAnimationFrame(tickFrame);
-      } else {
-        // STOP
-        timerState = "idle";
-        stopRaf();
-        setTimerForTab(currentTab);
-        setButtonUi();
-      }
-    });
+      });
 
-      // Tabs: click + keyboard navigation
+      // Tabs click & keyboard
       el.tabs.forEach((t) => {
         t.addEventListener("click", () => switchTab(t.dataset.tab));
         t.addEventListener("keydown", (e) => {
@@ -1684,7 +1943,7 @@
         });
       });
 
-      // Restart modal
+      // Restart modal (sama seperti sebelumnya, tidak diubah)
       function openRestartModal() {
         el.restartModal.style.display = "grid";
         el.restartCancelBtn.focus();
@@ -1692,7 +1951,6 @@
       function closeRestartModal() {
         el.restartModal.style.display = "none";
       }
-
       el.restartBtn.addEventListener("click", () => openRestartModal());
       el.restartCancelBtn.addEventListener("click", () => closeRestartModal());
       el.restartModal.addEventListener("click", (e) => {
@@ -1701,7 +1959,6 @@
       document.addEventListener("keydown", (e) => {
         if (e.key === "Escape" && el.restartModal.style.display !== "none") closeRestartModal();
       });
-
       el.restartConfirmBtn.addEventListener("click", () => {
         sessionCounts = { pomodoro: 0, rest: 0, longRest: 0 };
         writeSessionCounts(sessionCounts);
