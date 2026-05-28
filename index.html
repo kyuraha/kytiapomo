@@ -1007,7 +1007,7 @@
           id="bgAudio"
           loop
           preload="auto"
-          src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA="
+          src="lofi-morningurban.mp3"
         ></audio>
       </section>
 
@@ -1245,15 +1245,10 @@
         el.volumeRange.value = String(vol);
         el.volumeValue.textContent = `${Math.round(vol * 100)}%`;
 
-        const playing = localStorage.getItem(LS_KEYS.musicPlaying) === "true";
-        setMusicUiState(playing);
-
-        // Autoplay restrictions: we can only actually start playback after a user gesture.
-        // We keep UI state persisted; real playback starts on first user interaction.
-        if (playing) {
-          // Attempt (may fail silently until gesture). We'll ignore errors.
-          el.bgAudio.play().catch(() => {});
-        }
+        // Selalu tampilkan ikon play saat pertama load.
+        // Browser memblokir autoplay, jadi audio tidak akan benar-benar jalan
+        // sampai ada interaksi user — UI harus mencerminkan kondisi itu.
+        setMusicUiState(false);
       }
 
       function setMusicUiState(isPlaying) {
@@ -1311,13 +1306,40 @@
         localStorage.setItem(LS_KEYS.musicVolume, String(vol));
       });
 
-      // Placeholder buttons (no playlist system yet, keep UI as spec)
-      for (const btn of [el.musicPrevBtn, el.musicNextBtn, el.musicMenuBtn, el.musicExpandBtn]) {
-        if (!btn) continue;
-        btn.addEventListener("click", () => {
-          // no-op placeholder
-        });
+      // Playlist
+      const PLAYLIST = [
+        { file: "lofi-morningurban.mp3",  label: "Morning Urban - Lofi" },
+        { file: "lofi-morningnature.mp3", label: "Morning Nature - Lofi" },
+        { file: "lofi-jazzcafe.mp3",      label: "Jazz Cafe - Lofi" },
+        { file: "lofi-forest.mp3",        label: "Forest - Lofi" },
+      ];
+
+      let currentTrackIdx = Number(localStorage.getItem("musicTrackIdx") || 0);
+
+      function loadTrack(idx, autoplay) {
+        currentTrackIdx = ((idx % PLAYLIST.length) + PLAYLIST.length) % PLAYLIST.length;
+        localStorage.setItem("musicTrackIdx", String(currentTrackIdx));
+        const track = PLAYLIST[currentTrackIdx];
+        const wasPlaying = !el.bgAudio.paused;
+        el.bgAudio.src = track.file;
+        el.trackLabel.textContent = track.label;
+        el.bgAudio.load();
+        if (autoplay || wasPlaying) {
+          el.bgAudio.play().catch(() => {});
+        }
       }
+
+      // Init track label on load
+      loadTrack(currentTrackIdx, false);
+
+      el.musicPrevBtn.addEventListener("click", () => loadTrack(currentTrackIdx - 1, true));
+      el.musicNextBtn.addEventListener("click", () => loadTrack(currentTrackIdx + 1, true));
+
+      // Loop ditangani oleh atribut `loop` pada elemen <audio>
+
+      // musicMenuBtn & musicExpandBtn — no-op for now
+      if (el.musicMenuBtn) el.musicMenuBtn.addEventListener("click", () => {});
+      if (el.musicExpandBtn) el.musicExpandBtn.addEventListener("click", () => {});
 
       /**
        * =========================================================
@@ -1884,7 +1906,13 @@
         updateCountsUi();
 
         const next = nextTabAfterEnd(currentTab);
-        beep({ frequency: 880, durationMs: 180, volume: 0.22 });
+        // Kring x5 ala timer mekanik
+        for (let i = 0; i < 5; i++) {
+          setTimeout(() => {
+            beep({ frequency: 1050, durationMs: 120, volume: 0.3 });
+            setTimeout(() => beep({ frequency: 950, durationMs: 100, volume: 0.25 }), 80);
+          }, i * 280);
+        }
 
         // Auto-advance ke tab berikutnya dan mulai otomatis
         switchTab(next);
@@ -2164,6 +2192,30 @@
       }
 
       init();
+
+      // =========================================================
+      //  🛠️ Dev helpers — console only, for testing
+      //  Usage:
+      //    DEV.setTime(10)   → set timer ke 10 detik
+      //    DEV.testKring()   → bunyikan alarm kring x5
+      // =========================================================
+      window.DEV = {
+        setTime(seconds) {
+          timeRemaining = seconds;
+          updateTimerDisplay();
+          console.log(`⏱ Timer set ke ${seconds} detik`);
+        },
+        testKring() {
+          console.log("🔔 Membunyikan kring x5...");
+          for (let i = 0; i < 5; i++) {
+            setTimeout(() => {
+              beep({ frequency: 1050, durationMs: 120, volume: 0.3 });
+              setTimeout(() => beep({ frequency: 950, durationMs: 100, volume: 0.25 }), 80);
+            }, i * 280);
+          }
+        },
+      };
+      console.log("🛠️ DEV tools siap. Coba: DEV.setTime(10) atau DEV.testKring()");
     </script>
   </body>
 </html>
