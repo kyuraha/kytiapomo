@@ -1615,31 +1615,62 @@
         rafId = requestAnimationFrame(tickFrame);
       }
 
-      el.startPauseBtn.addEventListener("click", async () => {
-        ensureAudioContext();
-        if (audioCtx && audioCtx.state === "suspended") {
-          try {
-            await audioCtx.resume();
-          } catch {
-            // ignore
-          }
-        }
+      // el.startPauseBtn.addEventListener("click", async () => {
+      //   ensureAudioContext();
+      //   if (audioCtx && audioCtx.state === "suspended") {
+      //     try {
+      //       await audioCtx.resume();
+      //     } catch {
+      //       // ignore
+      //     }
+      //   }
 
-        if (timerState !== "running") {
-          timerState = "running";
-          setButtonUi();
-          await ensureMusicPlayingIfNeeded();
-          endTimeMs = performance.now() + timeRemaining * 1000;
-          stopRaf();
-          rafId = requestAnimationFrame(tickFrame);
-        } else {
-          // STOP => reset to full duration for current tab (not pause)
-          timerState = "idle";
-          stopRaf();
-          setTimerForTab(currentTab);
-          setButtonUi();
+      //   if (timerState !== "running") {
+      //     timerState = "running";
+      //     setButtonUi();
+      //     await ensureMusicPlayingIfNeeded();
+      //     endTimeMs = performance.now() + timeRemaining * 1000;
+      //     stopRaf();
+      //     rafId = requestAnimationFrame(tickFrame);
+      //   } else {
+      //     // STOP => reset to full duration for current tab (not pause)
+      //     timerState = "idle";
+      //     stopRaf();
+      //     setTimerForTab(currentTab);
+      //     setButtonUi();
+      //   }
+      // });
+
+          el.startPauseBtn.addEventListener("click", async () => {
+      ensureAudioContext();
+      if (audioCtx && audioCtx.state === "suspended") {
+        try {
+          await audioCtx.resume();
+        } catch {
+          // ignore
         }
-      });
+      }
+
+      if (timerState !== "running") {
+        // ✅ Pastikan timeRemaining > 0 sebelum mulai
+        if (timeRemaining <= 0) {
+          timeRemaining = durationSeconds;
+          render(1);
+        }
+        timerState = "running";
+        setButtonUi();
+        await ensureMusicPlayingIfNeeded();
+        endTimeMs = performance.now() + timeRemaining * 1000;
+        stopRaf();
+        rafId = requestAnimationFrame(tickFrame);
+      } else {
+        // STOP
+        timerState = "idle";
+        stopRaf();
+        setTimerForTab(currentTab);
+        setButtonUi();
+      }
+    });
 
       // Tabs: click + keyboard navigation
       el.tabs.forEach((t) => {
