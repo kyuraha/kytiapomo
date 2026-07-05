@@ -117,7 +117,7 @@
         display: grid;
         grid-template-rows: auto auto 1fr auto auto;
         padding: 18px;
-        min-height: 640px;
+        
         overflow: hidden;
       }
 
@@ -279,7 +279,9 @@
         padding: 14px;
         display: grid;
         grid-template-rows: auto auto 1fr;
-        min-height: 640px;
+        
+        height: 100%;
+        overflow: hidden;
       }
 
       .tasks-header {
@@ -341,7 +343,8 @@
         border-radius: 12px;
         border: 1px solid rgba(255, 255, 255, 0.08);
         background: rgba(0, 0, 0, 0.16);
-        overflow: auto;
+        overflow-y: auto;
+        
       }
 
       .task-item {
