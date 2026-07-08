@@ -4,6 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Pomodoro Timer</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect x='30' y='6' width='4' height='11' rx='2' fill='%232e7d32'/><ellipse cx='23' cy='16' rx='9' ry='5' fill='%2343a047' transform='rotate(-30 23 16)'/><ellipse cx='41' cy='16' rx='9' ry='5' fill='%2343a047' transform='rotate(30 41 16)'/><circle cx='32' cy='38' r='22' fill='%23e63946'/><ellipse cx='25' cy='30' rx='6' ry='4' fill='%23ffffff' opacity='0.25'/></svg>"
+    />
     <!-- Fonts (UI/Display) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -304,6 +308,44 @@
         font-weight: 650;
       }
 
+      .tasks-title-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .task-progress {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .task-progress[hidden] {
+        display: none;
+      }
+
+      .task-progress-track {
+        width: 90px;
+        height: 6px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12);
+        overflow: hidden;
+      }
+
+      .task-progress-fill {
+        height: 100%;
+        width: 0%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--color-accent), var(--color-accent-bright));
+        transition: width 0.25s ease;
+      }
+
+      .task-progress-count {
+        font-size: 12px;
+        color: var(--muted);
+        font-family: var(--font-display);
+      }
+
       .task-input {
         display: grid;
         grid-template-columns: 1fr auto;
@@ -344,7 +386,7 @@
         border: 1px solid rgba(255, 255, 255, 0.08);
         background: rgba(0, 0, 0, 0.16);
         overflow-y: auto;
-        
+        min-height: 0;
       }
 
       .task-item {
@@ -363,8 +405,34 @@
       }
 
       .task-item input[type="checkbox"] {
+        appearance: none;
+        -webkit-appearance: none;
         width: 18px;
         height: 18px;
+        margin: 0;
+        align-self: center;
+        justify-self: center;
+        background-color: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        border-radius: 4px;
+        cursor: pointer;
+        position: relative;
+      }
+
+      .task-item input[type="checkbox"]:checked {
+        border-color: var(--color-accent);
+      }
+
+      .task-item input[type="checkbox"]:checked::after {
+        content: "";
+        position: absolute;
+        left: 5px;
+        top: 1px;
+        width: 5px;
+        height: 10px;
+        border: solid var(--color-accent);
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
       }
 
       .task-text {
@@ -390,6 +458,21 @@
 
       .icon-btn:hover {
         background: rgba(255, 255, 255, 0.10);
+      }
+
+      .task-item .icon-btn {
+        padding: 4px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 0;
+      }
+
+      .task-item .icon-btn svg {
+        display: block;
+        width: 16px;
+        height: 16px;
       }
 
       /* Footer hint */
@@ -798,7 +881,8 @@
         background: linear-gradient(180deg, rgba(26, 26, 46, 0.55), rgba(13, 17, 23, 0.45));
         border: 1px solid rgba(0, 180, 216, 0.20);
         box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(0, 180, 216, 0.05), 0 0 18px rgba(0, 180, 216, 0.07);
-        min-height: calc(100vh - (var(--space-sm) * 2) - var(--music-bar-height));
+        height: calc(100vh - (var(--space-sm) * 2) - var(--music-bar-height));
+        max-height: calc(100vh - (var(--space-sm) * 2) - var(--music-bar-height));
         padding-bottom: var(--music-bar-height);
       }
 
@@ -892,7 +976,7 @@
       <section class="left-panel" aria-label="Pomodoro Timer">
         <canvas id="particleCanvas" class="particle-canvas" aria-hidden="true"></canvas>
         <div class="topbar" role="banner">
-          <div class="brand" aria-label="App name">Kytia Pomodoro Timer</div>
+          <div class="brand" aria-label="App name">Pomodoro Timer</div>
           <div class="top-actions">
             <button id="restartBtn" class="ghost-link" type="button" aria-label="Restart session" title="Restart session">
               <span aria-hidden="true">↺</span>
@@ -962,7 +1046,19 @@
                 stroke="url(#ringGradient)"
                 stroke-width="14"
                 stroke-linecap="butt"
-                stroke-dasharray="10 4"
+                stroke-dasharray="10 8"
+                transform="rotate(-90 110 110)"
+                filter="url(#softGlow2)"
+              />
+              <circle
+                id="ringFill"
+                cx="110"
+                cy="110"
+                r="86"
+                fill="transparent"
+                stroke="url(#ringGradient)"
+                stroke-width="14"
+                stroke-linecap="butt"
                 transform="rotate(-90 110 110)"
                 filter="url(#softGlow2)"
               />
@@ -1016,9 +1112,14 @@
 
       <aside class="card tasks-panel" aria-label="Task list panel">
         <div class="tasks-header">
-          <div style="display: flex; align-items: baseline; gap: 10px">
+          <div class="tasks-title-row">
             <h2>Tasks</h2>
-            <div class="count" id="taskCount">0</div>
+            <div class="task-progress" id="taskProgress" hidden>
+              <div class="task-progress-track">
+                <div class="task-progress-fill" id="taskProgressFill"></div>
+              </div>
+              <span class="task-progress-count" id="taskProgressCount">0/0</span>
+            </div>
           </div>
           <button id="taskOptionsBtn" class="ghost-link" type="button" aria-label="Task options" title="Options">⋯</button>
         </div>
@@ -1112,6 +1213,7 @@
         startPauseBtn: document.getElementById("startPauseBtn"),
         restartBtn: document.getElementById("restartBtn"),
         ringProgress: document.getElementById("ringProgress"),
+        ringFill: document.getElementById("ringFill"),
         ringWrap: document.querySelector(".ring-wrap"),
         tabs: Array.from(document.querySelectorAll(".tab")),
         tabUnderline: document.getElementById("tabUnderline"),
@@ -1132,7 +1234,9 @@
         taskForm: document.getElementById("taskForm"),
         taskInput: document.getElementById("taskInput"),
         taskList: document.getElementById("taskList"),
-        taskCount: document.getElementById("taskCount"),
+        taskProgress: document.getElementById("taskProgress"),
+        taskProgressFill: document.getElementById("taskProgressFill"),
+        taskProgressCount: document.getElementById("taskProgressCount"),
         taskOptionsBtn: document.getElementById("taskOptionsBtn"),
         // modal
         restartModal: document.getElementById("restartModal"),
@@ -1370,8 +1474,16 @@
       function renderTasks() {
         el.taskList.innerHTML = "";
 
-        // update count (show total tasks)
-        el.taskCount.textContent = String(tasks.length);
+        // update progress (completed / total), shown only when there are tasks
+        const total = tasks.length;
+        const done = tasks.filter((t) => t.done).length;
+        if (total === 0) {
+          el.taskProgress.hidden = true;
+        } else {
+          el.taskProgress.hidden = false;
+          el.taskProgressFill.style.width = `${(done / total) * 100}%`;
+          el.taskProgressCount.textContent = `${done}/${total}`;
+        }
 
         const frag = document.createDocumentFragment();
         for (const t of tasks) {
@@ -1396,7 +1508,8 @@
           const del = document.createElement("button");
           del.className = "icon-btn";
           del.type = "button";
-          del.textContent = "Delete";
+          del.setAttribute("aria-label", "Delete task");
+          del.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M6 6l1 14h10l1-14"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg>`;
           del.addEventListener("click", () => {
             tasks = tasks.filter((x) => x.id !== t.id);
             saveTasks();
@@ -1412,7 +1525,7 @@
       function addTask(text) {
         const trimmed = String(text || "").trim();
         if (!trimmed) return;
-        tasks.unshift({
+        tasks.push({
           id: crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2),
           text: trimmed,
           done: false,
@@ -1515,261 +1628,21 @@
        * - Accessibility: aria label updated every second
        * - Start timer triggers background music to start if not playing
        */
-    //   /** @type {"pomodoro"|"rest"|"longRest"} */
-    //   let currentTab = "pomodoro";
-    //   /** @type {"idle"|"running"|"paused"} */
-    //   let timerState = "idle";
-    //   let durationSeconds = DURATIONS.pomodoro;
-    //   let timeRemaining = durationSeconds;
-    //   let endTimeMs = 0;
-    //   let rafId = 0;
-    //   let lastWholeSecond = -1;
-
-    //   let sessionCounts = readSessionCounts();
-
-    //   function updateCountsUi() {
-    //     el.focusCount.textContent = String(sessionCounts.pomodoro);
-    //     el.breakCount.textContent = String(sessionCounts.rest);
-    //     el.longRestCount.textContent = String(sessionCounts.longRest);
-    //   }
-
-    //   function tabToLabel(tab) {
-    //     if (tab === "pomodoro") return "FOCUS";
-    //     if (tab === "rest") return "BREAK";
-    //     return "LONG BREAK";
-    //   }
-
-    //   function tabToDuration(tab) {
-    //     return DURATIONS[tab];
-    //   }
-
-    //   function setButtonUi() {
-    //     const running = timerState === "running";
-    //     el.startPauseBtn.textContent = running ? "STOP" : "START";
-    //     el.startPauseBtn.setAttribute("aria-label", running ? "Stop timer" : "Start timer");
-    //     el.runningHint.textContent = running ? "Running…" : "";
-    //   }
-
-    //   function setTabSelected(tab) {
-    //     for (const t of el.tabs) {
-    //       const isSel = t.dataset.tab === tab;
-    //       t.setAttribute("aria-selected", String(isSel));
-    //     }
-    //   }
-
-    //   function moveUnderlineToSelected() {
-    //     const selected = el.tabs.find((t) => t.getAttribute("aria-selected") === "true") || el.tabs[0];
-    //     if (!selected) return;
-    //     const centerX = selected.offsetLeft + selected.offsetWidth / 2;
-    //     el.tabUnderline.style.width = `${Math.max(62, selected.offsetWidth * 0.7)}px`;
-    //     el.tabUnderline.style.left = `${centerX}px`;
-    //   }
-
-    //   function flashRingOnce() {
-    //     if (!el.ringWrap) return;
-    //     el.ringWrap.style.filter = "drop-shadow(0 0 18px rgba(0,180,216,0.9))";
-    //     setTimeout(() => {
-    //       el.ringWrap.style.filter = "";
-    //     }, 220);
-    //   }
-
-    //   function render(progressFloat) {
-    //     // progressFloat: remaining / duration (0..1)
-    //     const r = 86;
-    //     const circumference = 2 * Math.PI * r;
-    //     const progress = clamp(progressFloat, 0, 1);
-    //     el.ringProgress.style.strokeDashoffset = `${circumference * (1 - progress)}`;
-
-    //     const whole = Math.floor(timeRemaining);
-    //     if (whole !== lastWholeSecond) {
-    //       lastWholeSecond = whole;
-    //       el.timeText.textContent = formatTime(whole);
-    //       const aria = secondsToAria(whole);
-    //       el.timeText.setAttribute("aria-label", aria);
-    //       if (el.timerAria) el.timerAria.textContent = aria;
-    //     }
-    //   }
-
-    //   function stopRaf() {
-    //     if (rafId) cancelAnimationFrame(rafId);
-    //     rafId = 0;
-    //   }
-
-    //   function tickFrame() {
-    //     if (timerState !== "running") return;
-    //     const now = performance.now();
-    //     timeRemaining = Math.max(0, (endTimeMs - now) / 1000);
-    //     render(durationSeconds > 0 ? timeRemaining / durationSeconds : 0);
-
-    //     if (timeRemaining <= 0) {
-    //       stopRaf();
-    //       onTimerEnded();
-    //       return;
-    //     }
-    //     rafId = requestAnimationFrame(tickFrame);
-    //   }
-
-    //   async function ensureMusicPlayingIfNeeded() {
-    //     if (el.bgAudio.paused) await setMusicPlaying(true);
-    //   }
-
-
-    //   function nextTabAfterEnd(tab) {
-    //     if (tab === "pomodoro") {
-    //       // every 4th pomodoro => long rest, else short rest
-    //       const nextPomodoroCount = sessionCounts.pomodoro + 1;
-    //       return nextPomodoroCount % 4 === 0 ? "longRest" : "rest";
-    //     }
-    //     return "pomodoro";
-    //   }
-
-    //   function setTimerForTab(tab) {
-    //     currentTab = tab;
-    //     durationSeconds = tabToDuration(tab);
-    //     timeRemaining = durationSeconds;
-    //     lastWholeSecond = -1;
-    //     el.statusLabel.textContent = tabToLabel(tab);
-    //     render(1);
-    //   }
-
-    //   function switchTab(tab) {
-    //     timerState = "idle";
-    //     stopRaf();
-    //     setTabSelected(tab);
-    //     setTimerForTab(tab);
-    //     setButtonUi();
-    //     moveUnderlineToSelected();
-    //   }
-
-    //   function onTimerEnded() {
-    //     flashRingOnce();
-
-    //     // increment counter for the completed session
-    //     sessionCounts = { ...sessionCounts, [currentTab]: sessionCounts[currentTab] + 1 };
-    //     writeSessionCounts(sessionCounts);
-    //     updateCountsUi();
-
-    //     const next = nextTabAfterEnd(currentTab);
-    //     beep({ frequency: 880, durationMs: 180, volume: 0.22 });
-
-    //     // Auto-advance and keep running (autoplay)
-    //     switchTab(next);
-    //     timerState = "running";
-    //     setButtonUi();
-    //     endTimeMs = performance.now() + timeRemaining * 1000;
-    //     rafId = requestAnimationFrame(tickFrame);
-    //   }
-
-    //   // el.startPauseBtn.addEventListener("click", async () => {
-    //   //   ensureAudioContext();
-    //   //   if (audioCtx && audioCtx.state === "suspended") {
-    //   //     try {
-    //   //       await audioCtx.resume();
-    //   //     } catch {
-    //   //       // ignore
-    //   //     }
-    //   //   }
-
-    //   //   if (timerState !== "running") {
-    //   //     timerState = "running";
-    //   //     setButtonUi();
-    //   //     await ensureMusicPlayingIfNeeded();
-    //   //     endTimeMs = performance.now() + timeRemaining * 1000;
-    //   //     stopRaf();
-    //   //     rafId = requestAnimationFrame(tickFrame);
-    //   //   } else {
-    //   //     // STOP => reset to full duration for current tab (not pause)
-    //   //     timerState = "idle";
-    //   //     stopRaf();
-    //   //     setTimerForTab(currentTab);
-    //   //     setButtonUi();
-    //   //   }
-    //   // });
-
-    //       el.startPauseBtn.addEventListener("click", async () => {
-    //   ensureAudioContext();
-    //   if (audioCtx && audioCtx.state === "suspended") {
-    //     try {
-    //       await audioCtx.resume();
-    //     } catch {
-    //       // ignore
-    //     }
-    //   }
-
-    //   if (timerState !== "running") {
-    //     // ✅ Pastikan timeRemaining > 0 sebelum mulai
-    //     if (timeRemaining <= 0) {
-    //       timeRemaining = durationSeconds;
-    //       render(1);
-    //     }
-    //     timerState = "running";
-    //     setButtonUi();
-    //     await ensureMusicPlayingIfNeeded();
-    //     endTimeMs = performance.now() + timeRemaining * 1000;
-    //     stopRaf();
-    //     rafId = requestAnimationFrame(tickFrame);
-    //   } else {
-    //     // STOP
-    //     timerState = "idle";
-    //     stopRaf();
-    //     setTimerForTab(currentTab);
-    //     setButtonUi();
-    //   }
-    // });
-
-    //   // Tabs: click + keyboard navigation
-    //   el.tabs.forEach((t) => {
-    //     t.addEventListener("click", () => switchTab(t.dataset.tab));
-    //     t.addEventListener("keydown", (e) => {
-    //       if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-    //       e.preventDefault();
-    //       const idx = el.tabs.indexOf(t);
-    //       const nextIdx = e.key === "ArrowRight" ? (idx + 1) % el.tabs.length : (idx - 1 + el.tabs.length) % el.tabs.length;
-    //       el.tabs[nextIdx].focus();
-    //     });
-    //   });
-
-    //   // Restart modal
-    //   function openRestartModal() {
-    //     el.restartModal.style.display = "grid";
-    //     el.restartCancelBtn.focus();
-    //   }
-    //   function closeRestartModal() {
-    //     el.restartModal.style.display = "none";
-    //   }
-
-    //   el.restartBtn.addEventListener("click", () => openRestartModal());
-    //   el.restartCancelBtn.addEventListener("click", () => closeRestartModal());
-    //   el.restartModal.addEventListener("click", (e) => {
-    //     if (e.target === el.restartModal) closeRestartModal();
-    //   });
-    //   document.addEventListener("keydown", (e) => {
-    //     if (e.key === "Escape" && el.restartModal.style.display !== "none") closeRestartModal();
-    //   });
-
-    //   el.restartConfirmBtn.addEventListener("click", () => {
-    //     sessionCounts = { pomodoro: 0, rest: 0, longRest: 0 };
-    //     writeSessionCounts(sessionCounts);
-    //     updateCountsUi();
-    //     closeRestartModal();
-    //     switchTab("pomodoro");
-    //   });
-
-          /**
-       * =========================================================
-       *  Pomodoro Timer Logic (diperbaiki dengan setInterval)
-       * =========================================================
-       */
       /** @type {"pomodoro"|"rest"|"longRest"} */
       let currentTab = "pomodoro";
       /** @type {"idle"|"running"|"paused"} */
       let timerState = "idle";
       let durationSeconds = DURATIONS.pomodoro;
       let timeRemaining = durationSeconds;
-      let timerInterval = null; // untuk update waktu per 100ms
-      let ringRaf = null; // khusus untuk animasi ring smooth
+      let endTimeMs = 0;
+      let rafId = 0;
+      let titleInterval = 0;
+      let lastWholeSecond = -1;
 
       let sessionCounts = readSessionCounts();
+
+      const RING_R = 86;
+      const RING_CIRC = 2 * Math.PI * RING_R;
 
       function updateCountsUi() {
         el.focusCount.textContent = String(sessionCounts.pomodoro);
@@ -1781,6 +1654,12 @@
         if (tab === "pomodoro") return "FOCUS";
         if (tab === "rest") return "BREAK";
         return "LONG BREAK";
+      }
+
+      function tabToTitleMode(tab) {
+        if (tab === "pomodoro") return "focus";
+        if (tab === "rest") return "rest";
+        return "long rest";
       }
 
       function tabToDuration(tab) {
@@ -1817,100 +1696,89 @@
         }, 220);
       }
 
-      // Update tampilan angka dan ring (panggil setiap kali timeRemaining berubah)
       function updateTimerDisplay() {
-        const whole = Math.floor(timeRemaining);
-        el.timeText.textContent = formatTime(whole);
-        const aria = secondsToAria(whole);
-        el.timeText.setAttribute("aria-label", aria);
-        if (el.timerAria) el.timerAria.textContent = aria;
+        const progress = durationSeconds > 0 ? clamp(timeRemaining / durationSeconds, 0, 1) : 0;
+        const elapsed = 1 - progress;
+        // Neutral zebra ring (transparent gaps) is always visible via #ringProgress.
+        // A solid blue arc (#ringFill) grows clockwise from the top as the session elapses.
+        const fillLen = RING_CIRC * elapsed;
+        el.ringFill.style.strokeDasharray = `${fillLen} ${RING_CIRC}`;
+        el.ringFill.style.strokeDashoffset = "0";
 
-        // Update ring progress (smooth)
-        const progress = durationSeconds > 0 ? timeRemaining / durationSeconds : 0;
-        const r = 86;
-        const circumference = 2 * Math.PI * r;
-        const offset = circumference * (1 - Math.min(1, Math.max(0, progress)));
-        el.ringProgress.style.strokeDashoffset = offset;
+        const whole = Math.floor(timeRemaining);
+        if (whole !== lastWholeSecond) {
+          lastWholeSecond = whole;
+          el.timeText.textContent = formatTime(whole);
+          const aria = secondsToAria(whole);
+          el.timeText.setAttribute("aria-label", aria);
+          if (el.timerAria) el.timerAria.textContent = aria;
+        }
+
+        // Tab title shows the countdown only while the timer is active.
+        document.title =
+          timerState === "idle"
+            ? "Pomodoro Timer"
+            : `${formatTime(whole)} - ${tabToTitleMode(currentTab)}`;
       }
 
-      function stopTimer() {
-        if (timerInterval) {
-          clearInterval(timerInterval);
-          timerInterval = null;
+      function stopRaf() {
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
+
+      function stopInterval() {
+        if (titleInterval) clearInterval(titleInterval);
+        titleInterval = 0;
+      }
+
+      function refreshFromClock() {
+        const now = performance.now();
+        timeRemaining = Math.max(0, (endTimeMs - now) / 1000);
+        updateTimerDisplay();
+
+        if (timeRemaining <= 0) {
+          stopRaf();
+          stopInterval();
+          onTimerEnded();
         }
-        if (ringRaf) {
-          cancelAnimationFrame(ringRaf);
-          ringRaf = null;
+      }
+
+      function tickFrame() {
+        if (timerState !== "running") return;
+        refreshFromClock();
+        if (timerState === "running") {
+          rafId = requestAnimationFrame(tickFrame);
         }
       }
 
       function startTimer() {
-        if (timerState !== "running") return;
-        if (timeRemaining <= 0) {
-          // Jika waktu habis, langsung selesaikan
-          onTimerEnded();
-          return;
-        }
-        const startTime = performance.now();
-        const initialRemaining = timeRemaining;
-        let lastUpdate = startTime;
-
-        stopTimer(); // bersihkan interval lama jika ada
-
-        // Update ring secara smooth dengan raf (opsional)
-        function updateRingSmooth() {
+        endTimeMs = performance.now() + timeRemaining * 1000;
+        stopRaf();
+        stopInterval();
+        rafId = requestAnimationFrame(tickFrame);
+        // Keep the countdown + tab title accurate even when this tab is in the
+        // background, since requestAnimationFrame is paused for hidden tabs.
+        titleInterval = setInterval(() => {
           if (timerState !== "running") return;
-          const now = performance.now();
-          const elapsed = (now - startTime) / 1000;
-          const newRemaining = Math.max(0, initialRemaining - elapsed);
-          if (Math.abs(newRemaining - timeRemaining) > 0.01) {
-            // update timeRemaining sedikit demi sedikit untuk ring
-            timeRemaining = newRemaining;
-            const progress = durationSeconds > 0 ? timeRemaining / durationSeconds : 0;
-            const r = 86;
-            const circumference = 2 * Math.PI * r;
-            const offset = circumference * (1 - Math.min(1, Math.max(0, progress)));
-            el.ringProgress.style.strokeDashoffset = offset;
-          }
-          if (timerState === "running") {
-            ringRaf = requestAnimationFrame(updateRingSmooth);
-          }
+          refreshFromClock();
+        }, 250);
+      }
+
+      function stopTimer() {
+        if (timerState === "running") {
+          timeRemaining = Math.max(0, (endTimeMs - performance.now()) / 1000);
         }
-
-        // Update angka timer setiap 100ms
-        timerInterval = setInterval(() => {
-          if (timerState !== "running") return;
-          const now = performance.now();
-          const elapsed = (now - startTime) / 1000;
-          let newRemaining = initialRemaining - elapsed;
-          if (newRemaining <= 0) {
-            newRemaining = 0;
-            clearInterval(timerInterval);
-            timerInterval = null;
-            cancelAnimationFrame(ringRaf);
-            ringRaf = null;
-            timeRemaining = 0;
-            updateTimerDisplay();
-            onTimerEnded();
-            return;
-          }
-          // Bulatkan ke 0.01 untuk mengurangi noise, tapi tetap update
-          timeRemaining = newRemaining;
-          updateTimerDisplay();
-        }, 100);
-
-        ringRaf = requestAnimationFrame(updateRingSmooth);
+        stopRaf();
+        stopInterval();
       }
 
       function onTimerEnded() {
+        stopInterval();
+        timeRemaining = 0;
+        updateTimerDisplay();
         flashRingOnce();
-        // increment counter untuk sesi yang selesai
-        sessionCounts = { ...sessionCounts, [currentTab]: sessionCounts[currentTab] + 1 };
-        writeSessionCounts(sessionCounts);
-        updateCountsUi();
 
-        const next = nextTabAfterEnd(currentTab);
-        // Kring x5 ala timer mekanik
+        // Bunyikan alarm (kring) beberapa kali
         for (let i = 0; i < 5; i++) {
           setTimeout(() => {
             beep({ frequency: 1050, durationMs: 120, volume: 0.3 });
@@ -1918,19 +1786,25 @@
           }, i * 280);
         }
 
-        // Auto-advance ke tab berikutnya dan mulai otomatis
-        switchTab(next);
-        // Set timer state menjadi running
-        timerState = "running";
+        // Increment session counter
+        sessionCounts[currentTab] = (sessionCounts[currentTab] || 0) + 1;
+        writeSessionCounts(sessionCounts);
+        updateCountsUi();
+
+        // Auto-advance
+        const next = nextTabAfterEnd(currentTab);
+        timerState = "idle";
+        setTabSelected(next);
+        setTimerForTab(next);
         setButtonUi();
-        // Mulai timer dengan sisa waktu yang baru (full duration dari tab baru)
-        startTimer();
+        moveUnderlineToSelected();
       }
 
-      function nextTabAfterEnd(tab) {
+
+    
+              function nextTabAfterEnd(tab) {
         if (tab === "pomodoro") {
-          const nextPomodoroCount = sessionCounts.pomodoro + 1;
-          return nextPomodoroCount % 4 === 0 ? "longRest" : "rest";
+          return "rest";
         }
         return "pomodoro";
       }
@@ -1955,10 +1829,6 @@
         moveUnderlineToSelected();
       }
 
-            async function ensureMusicPlayingIfNeeded() {
-        if (el.bgAudio.paused) await setMusicPlaying(true);
-      }
-
       el.startPauseBtn.addEventListener("click", async () => {
         ensureAudioContext();
         if (audioCtx && audioCtx.state === "suspended") {
@@ -1976,7 +1846,6 @@
           timerState = "running";
           setButtonUi();
           startTimer(); // jalankan timer langsung, jangan tunggu musik
-          ensureMusicPlayingIfNeeded().catch(() => {}); // musik jalan di background
         } else {
           // STOP: reset ke full duration untuk tab ini
           stopTimer();
@@ -1996,6 +1865,14 @@
           const nextIdx = e.key === "ArrowRight" ? (idx + 1) % el.tabs.length : (idx - 1 + el.tabs.length) % el.tabs.length;
           el.tabs[nextIdx].focus();
         });
+      });
+
+      // Keep the title/countdown accurate when returning to this tab.
+      // (While hidden, browsers clamp timers to ~1s; this syncs instantly on return.)
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible" && timerState === "running") {
+          refreshFromClock();
+        }
       });
 
       // Restart modal (sama seperti sebelumnya, tidak diubah)
@@ -2223,3 +2100,8 @@
     </script>
   </body>
 </html>
+
+
+
+
+
