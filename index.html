@@ -978,6 +978,10 @@
         <div class="topbar" role="banner">
           <div class="brand" aria-label="App name">Pomodoro Timer</div>
           <div class="top-actions">
+            <button id="settingsBtn" class="ghost-link" type="button" aria-label="Settings" title="Settings">
+              <span aria-hidden="true">⚙</span>
+              <span>Settings</span>
+            </button>
             <button id="restartBtn" class="ghost-link" type="button" aria-label="Restart session" title="Restart session">
               <span aria-hidden="true">↺</span>
               <span>Restart session</span>
@@ -1133,6 +1137,70 @@
       </aside>
     </main>
 
+    <!-- Settings modal -->
+    <div
+      id="settingsModal"
+      style="
+        position: fixed;
+        inset: 0;
+        display: none;
+        place-items: center;
+        background: rgba(0, 0, 0, 0.55);
+        z-index: 1000;
+      "
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="settingsTitle"
+    >
+      <div
+        style="
+          width: min(520px, 92vw);
+          border: 1px solid rgba(0, 180, 216, 0.25);
+          border-radius: 12px;
+          background: rgba(26, 26, 46, 0.95);
+          box-shadow: 0 0 24px rgba(0, 180, 216, 0.25);
+          padding: 18px;
+        "
+      >
+        <div id="settingsTitle" style="font-family: var(--font-ui); font-weight: 700; font-size: 18px; margin-bottom: 6px">
+          Settings
+        </div>
+        <div style="color: var(--color-text-secondary); margin-bottom: 14px">
+          Atur durasi setiap sesi Pomodoro dan siklus long rest.
+        </div>
+
+        <div style="display: grid; gap: 14px">
+          <label style="display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px">
+            <span style="font-family: var(--font-ui)">Pomodoro (menit)</span>
+            <input id="setPomodoro" type="number" min="1" step="1" inputmode="numeric"
+              style="width: 90px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(0,180,216,0.25); background: rgba(13,17,23,0.4); color: var(--color-text-primary)" />
+          </label>
+          <label style="display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px">
+            <span style="font-family: var(--font-ui)">Rest (menit)</span>
+            <input id="setRest" type="number" min="1" step="1" inputmode="numeric"
+              style="width: 90px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(0,180,216,0.25); background: rgba(13,17,23,0.4); color: var(--color-text-primary)" />
+          </label>
+          <label style="display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px">
+            <span style="font-family: var(--font-ui)">Long rest (menit)</span>
+            <input id="setLongRest" type="number" min="1" step="1" inputmode="numeric"
+              style="width: 90px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(0,180,216,0.25); background: rgba(13,17,23,0.4); color: var(--color-text-primary)" />
+          </label>
+          <label style="display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px">
+            <span style="font-family: var(--font-ui)">Long rest setiap (pomodoro)</span>
+            <input id="setCycle" type="number" min="1" step="1" inputmode="numeric"
+              style="width: 90px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(0,180,216,0.25); background: rgba(13,17,23,0.4); color: var(--color-text-primary)" />
+          </label>
+        </div>
+
+        <div id="settingsError" style="color: #ff8a8a; font-size: 12px; min-height: 16px; margin-top: 10px"></div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px">
+          <button id="settingsCancelBtn" class="ghost-link" type="button">Cancel</button>
+          <button id="settingsSaveBtn" class="btn" type="button" style="min-width: 160px; height: 44px">Save</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Restart confirmation modal -->
     <div
       id="restartModal"
@@ -1186,18 +1254,46 @@
         musicVolume: "pomo_music_volume_v1",
         musicPlaying: "pomo_music_playing_v1",
         sessionCounts: "pomo_session_counts_v1",
+        settings: "pomo_settings_v1",
       };
 
       /**
        * =========================================================
-       *  Default durations (seconds)
+       *  Settings (durations + long rest cycle)
        * =========================================================
        */
-      const DURATIONS = {
-        pomodoro: 25 * 60, // 25 minutes
-        rest: 5 * 60, // 5 minutes
-        longRest: 15 * 60, // 15 minutes
+      const DEFAULT_SETTINGS = {
+        pomodoro: 25, // minutes
+        rest: 5, // minutes
+        longRest: 15, // minutes
+        cycle: 4, // long rest every N completed pomodoros
       };
+
+      function loadSettings() {
+        const raw = localStorage.getItem(LS_KEYS.settings);
+        const parsed = safeJsonParse(raw || "{}", {});
+        return {
+          pomodoro: Number(parsed?.pomodoro) || DEFAULT_SETTINGS.pomodoro,
+          rest: Number(parsed?.rest) || DEFAULT_SETTINGS.rest,
+          longRest: Number(parsed?.longRest) || DEFAULT_SETTINGS.longRest,
+          cycle: Number(parsed?.cycle) || DEFAULT_SETTINGS.cycle,
+        };
+      }
+
+      function saveSettings(s) {
+        localStorage.setItem(LS_KEYS.settings, JSON.stringify(s));
+      }
+
+      function durationsFromSettings(s) {
+        return {
+          pomodoro: Math.max(1, s.pomodoro) * 60,
+          rest: Math.max(1, s.rest) * 60,
+          longRest: Math.max(1, s.longRest) * 60,
+        };
+      }
+
+      let settings = loadSettings();
+      let DURATIONS = durationsFromSettings(settings);
 
       /**
        * =========================================================
@@ -1242,6 +1338,16 @@
         restartModal: document.getElementById("restartModal"),
         restartCancelBtn: document.getElementById("restartCancelBtn"),
         restartConfirmBtn: document.getElementById("restartConfirmBtn"),
+        // settings
+        settingsBtn: document.getElementById("settingsBtn"),
+        settingsModal: document.getElementById("settingsModal"),
+        settingsCancelBtn: document.getElementById("settingsCancelBtn"),
+        settingsSaveBtn: document.getElementById("settingsSaveBtn"),
+        setPomodoro: document.getElementById("setPomodoro"),
+        setRest: document.getElementById("setRest"),
+        setLongRest: document.getElementById("setLongRest"),
+        setCycle: document.getElementById("setCycle"),
+        settingsError: document.getElementById("settingsError"),
       };
 
       /**
@@ -1804,7 +1910,10 @@
     
               function nextTabAfterEnd(tab) {
         if (tab === "pomodoro") {
-          return "rest";
+          // sessionCounts.pomodoro already incremented for the finished pomodoro
+          return settings.cycle > 0 && sessionCounts.pomodoro % settings.cycle === 0
+            ? "longRest"
+            : "rest";
         }
         return "pomodoro";
       }
@@ -1897,6 +2006,67 @@
         updateCountsUi();
         closeRestartModal();
         switchTab("pomodoro");
+      });
+
+      /**
+       * =========================================================
+       *  Settings modal
+       * =========================================================
+       */
+      function openSettingsModal() {
+        el.settingsError.textContent = "";
+        el.setPomodoro.value = String(settings.pomodoro);
+        el.setRest.value = String(settings.rest);
+        el.setLongRest.value = String(settings.longRest);
+        el.setCycle.value = String(settings.cycle);
+        el.settingsModal.style.display = "grid";
+        el.setPomodoro.focus();
+      }
+      function closeSettingsModal() {
+        el.settingsModal.style.display = "none";
+      }
+
+      el.settingsBtn.addEventListener("click", () => openSettingsModal());
+      el.settingsCancelBtn.addEventListener("click", () => closeSettingsModal());
+      el.settingsModal.addEventListener("click", (e) => {
+        if (e.target === el.settingsModal) closeSettingsModal();
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && el.settingsModal.style.display !== "none") closeSettingsModal();
+      });
+
+      el.settingsSaveBtn.addEventListener("click", () => {
+        const pomodoro = Number(el.setPomodoro.value);
+        const rest = Number(el.setRest.value);
+        const longRest = Number(el.setLongRest.value);
+        const cycle = Number(el.setCycle.value);
+
+        if (
+          !Number.isFinite(pomodoro) || pomodoro < 1 ||
+          !Number.isFinite(rest) || rest < 1 ||
+          !Number.isFinite(longRest) || longRest < 1 ||
+          !Number.isFinite(cycle) || cycle < 1
+        ) {
+          el.settingsError.textContent =
+            "Semua nilai harus berupa angka minimal 1.";
+          return;
+        }
+
+        settings = {
+          pomodoro,
+          rest,
+          longRest,
+          cycle: Math.floor(cycle),
+        };
+        saveSettings(settings);
+        DURATIONS = durationsFromSettings(settings);
+
+        // Apply to the current tab immediately when not actively running.
+        if (timerState !== "running") {
+          setTimerForTab(currentTab);
+        }
+
+        closeSettingsModal();
       });
 
       /**
