@@ -960,6 +960,26 @@
         background: rgba(0, 0, 0, 0.2);
       }
 
+      /* Hide number input spinners (minimalist, keyboard-only) */
+      #setPomodoro,
+      #setRest,
+      #setLongRest,
+      #setCycle {
+        -moz-appearance: textfield;
+        appearance: textfield;
+      }
+      #setPomodoro::-webkit-outer-spin-button,
+      #setPomodoro::-webkit-inner-spin-button,
+      #setRest::-webkit-outer-spin-button,
+      #setRest::-webkit-inner-spin-button,
+      #setLongRest::-webkit-outer-spin-button,
+      #setLongRest::-webkit-inner-spin-button,
+      #setCycle::-webkit-outer-spin-button,
+      #setCycle::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+
       /* Responsive stack */
       @media (max-width: 980px) {
         .app {
