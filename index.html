@@ -502,6 +502,12 @@
           width: 100%;
           min-width: unset;
         }
+        .controls-row {
+          width: 100%;
+        }
+        .btn-equal {
+          width: auto;
+        }
         .music {
           grid-template-columns: 1fr;
           gap: 10px;
@@ -805,6 +811,31 @@
         outline: 2px solid var(--color-accent);
       }
 
+      .controls-row {
+        display: flex;
+        gap: 24px;
+        align-items: center;
+        justify-content: center;
+        width: min(var(--action-size), 85%);
+        margin: 0 auto;
+      }
+      .btn-equal {
+        flex: 1 1 0;
+        min-width: 0;
+        display: grid;
+        place-items: center;
+      }
+      .btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+      .btn:disabled:hover {
+        background: rgba(0, 180, 216, 0.08);
+        color: var(--color-accent);
+        box-shadow: none;
+      }
+
       /* Music bar fixed at bottom (left panel only) */
       .musicbar {
         z-index: 100;
@@ -1096,7 +1127,10 @@
         </div>
 
         <div class="controls" aria-label="Timer controls">
-          <button id="startPauseBtn" class="btn" type="button" aria-label="Start timer">Start</button>
+          <div class="controls-row">
+            <button id="startPauseBtn" class="btn btn-equal" type="button" aria-label="Start timer">START</button>
+            <button id="pauseBtn" class="btn btn-equal" type="button" aria-label="Pause timer" disabled>PAUSE</button>
+          </div>
         </div>
 
         <!-- Music bar (fixed at bottom of left panel) -->
@@ -1325,6 +1359,7 @@
         timerAria: document.getElementById("timerAria"),
         runningHint: document.getElementById("runningHint"),
         startPauseBtn: document.getElementById("startPauseBtn"),
+        pauseBtn: document.getElementById("pauseBtn"),
         restartBtn: document.getElementById("restartBtn"),
         ringProgress: document.getElementById("ringProgress"),
         ringFill: document.getElementById("ringFill"),
@@ -1746,7 +1781,8 @@
        * - Tabs: Pomodoro / Rest / Long Rest
        * - START/STOP button (STOP resets to default duration)
        * - Timer ends -> ring flashes, beep, session counter increments
-       * - Auto-advance: pomodoro -> (rest or long rest after each 4th pomodoro) -> pomodoro
+       * - Auto-advance: pomodoro -> (rest or long rest after each 4th pomodoro) -> pomodoro,
+       *   next session auto-starts (full automatic cycle; STOP breaks the cycle)
        * - Tab switch resets timer for that duration
        * - Ring updates smoothly via requestAnimationFrame (per-frame)
        * - Accessibility: aria label updated every second
@@ -1792,9 +1828,18 @@
 
       function setButtonUi() {
         const running = timerState === "running";
-        el.startPauseBtn.textContent = running ? "STOP" : "START";
-        el.startPauseBtn.setAttribute("aria-label", running ? "Stop timer" : "Start timer");
-        el.runningHint.textContent = running ? "Running…" : "";
+        const paused = timerState === "paused";
+
+        // Left button: START when idle, STOP when running/paused
+        el.startPauseBtn.textContent = (running || paused) ? "STOP" : "START";
+        el.startPauseBtn.setAttribute("aria-label", (running || paused) ? "Stop timer" : "Start timer");
+
+        // Right button: PAUSE when running, RESUME when paused, disabled when idle
+        el.pauseBtn.disabled = !(running || paused);
+        el.pauseBtn.textContent = paused ? "RESUME" : "PAUSE";
+        el.pauseBtn.setAttribute("aria-label", paused ? "Resume timer" : "Pause timer");
+
+        el.runningHint.textContent = running ? "Running…" : (paused ? "Paused" : "");
       }
 
       function setTabSelected(tab) {
@@ -1864,13 +1909,21 @@
           stopRaf();
           stopInterval();
           onTimerEnded();
+          // Signal to the caller that the session ended. When auto-cycle runs,
+          // onTimerEnded() already scheduled a fresh rAF/interval via startTimer(),
+          // so tickFrame must NOT re-schedule its own loop (would double-count).
+          return true;
         }
+        return false;
       }
 
       function tickFrame() {
         if (timerState !== "running") return;
-        refreshFromClock();
-        if (timerState === "running") {
+        const ended = refreshFromClock();
+        // Only re-schedule if the session did not end this frame. If it ended,
+        // startTimer() (called from onTimerEnded for auto-cycle) has already armed
+        // a new loop, so re-scheduling here would create a second parallel rAF loop.
+        if (!ended && timerState === "running") {
           rafId = requestAnimationFrame(tickFrame);
         }
       }
@@ -1915,13 +1968,14 @@
         writeSessionCounts(sessionCounts);
         updateCountsUi();
 
-        // Auto-advance
+        // Auto-advance (full automatic cycle: next session starts immediately)
         const next = nextTabAfterEnd(currentTab);
-        timerState = "idle";
         setTabSelected(next);
-        setTimerForTab(next);
-        setButtonUi();
+        setTimerForTab(next);        // reset timeRemaining & duration for the next tab
+        timerState = "running";      // keep running for auto-cycle
+        setButtonUi();               // button -> STOP
         moveUnderlineToSelected();
+        startTimer();                // start countdown (focus alarm keeps beeping alongside)
       }
 
 
@@ -1945,8 +1999,8 @@
       }
 
       function switchTab(tab) {
-        // Hentikan timer jika sedang berjalan
-        if (timerState === "running") {
+        // Hentikan timer jika sedang berjalan / paused
+        if (timerState === "running" || timerState === "paused") {
           stopTimer();
           timerState = "idle";
         }
@@ -1964,7 +2018,7 @@
           } catch {}
         }
 
-        if (timerState !== "running") {
+        if (timerState !== "running" && timerState !== "paused") {
           // START
           if (timeRemaining <= 0) {
             timeRemaining = durationSeconds;
@@ -1974,12 +2028,33 @@
           setButtonUi();
           startTimer(); // jalankan timer langsung, jangan tunggu musik
         } else {
-          // STOP: reset ke full duration untuk tab ini
+          // STOP: reset ke full duration untuk tab ini (memutus auto-cycle)
           stopTimer();
           timerState = "idle";
           setTimerForTab(currentTab);
           setButtonUi();
         }
+      });
+
+      el.pauseBtn.addEventListener("click", async () => {
+        if (timerState === "running") {
+          // PAUSE — pertahankan sisa waktu
+          stopTimer();
+          timerState = "paused";
+          setButtonUi();
+        } else if (timerState === "paused") {
+          // RESUME — lanjut dari sisa waktu
+          ensureAudioContext();
+          if (audioCtx && audioCtx.state === "suspended") {
+            try {
+              await audioCtx.resume();
+            } catch {}
+          }
+          timerState = "running";
+          setButtonUi();
+          startTimer();
+        }
+        // idle: tombol disabled, tidak ada aksi
       });
 
       // Tabs click & keyboard
@@ -2079,8 +2154,9 @@
         saveSettings(settings);
         DURATIONS = durationsFromSettings(settings);
 
-        // Apply to the current tab immediately when not actively running.
-        if (timerState !== "running") {
+        // Apply to the current tab immediately only when idle, so a running or
+        // paused session keeps its remaining time.
+        if (timerState === "idle") {
           setTimerForTab(currentTab);
         }
 
